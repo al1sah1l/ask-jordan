@@ -2,4 +2,4 @@
 
 ## Submissions
 
-- [F2 submission: Problem Framing](writings/F2.md)
+- [F2: Problem Framing](writings/F2.md)
