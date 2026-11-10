@@ -51,3 +51,15 @@
 
 ## 4. Notes from the meeting:
 
+MVP functionality - user journey that closes the bad situation flow: main features for covering exploration and simplified reflection (as an example, from 0-5 how satisfied you were to do this activity)
+
+Beta - more complicated prompts and more detailed reflection but limited word count; add customization of profile to look like students; reward students for doing stuff; potentially, unlock different ideas (tree brunches) when doing stuff.
+
+Prompt AI efficiently in terms of context, explore combining different models
+
+CI-H educational class - reach out to the program to see if we can go to middle school and talk to middle schoolers
+
+Recommendation: talk to students before building if possible.
+
+Idea: Make the map of interests tried (aka Minecraft recipe chart), unlocking interest bubbles
+Idea: Make it competitive
