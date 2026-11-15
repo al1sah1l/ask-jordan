@@ -65,9 +65,9 @@ getRelatedInterests (user: User, interest: Interest): (interests: set Interest)
 
 > **then** return all interests connected to interest in the user's collection
 
-## IdeaGeneration
+## InterestGeneration
 
-**concept** IdeaGeneration [User, Interest, Profile]
+**concept** InterestGeneration [User, Interest, Profile]
 
 **purpose** generate ideas for a user to explore based on their profile, allow users to explore new aspects of their interests that they might never have known about otherwise (ex: George is interested in soccer -> generates ideas like sports photography)
 
@@ -107,7 +107,7 @@ uninterested(user: User, interest: Interest)
 > **then** remove interest from user's LLM-generated and add interest to user's uninterested
 
 
-**asides** IdeaGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
+**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 
 
 ## StoryGeneration
