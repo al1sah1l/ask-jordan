@@ -300,27 +300,29 @@ getEquipped (user: User): (worn: set Worn)
 
 ## InterestMap
 
-## ExplorationTracking
+## **ExplorationTracking**
 
-**concept** ExplorationTracking [User, Interest, Chapter]
+**concept** ExplorationTracking [User, Interest, Story]
 
 **purpose** keep track of users' previous explorations and their progress. Prevents users from losing track of activities they have explored and allows them to return to previous experiences.
 
-**principle** when a user chooses an interest to explore, an exploration record is created. The user can progress through story chapters, complete explorations, and review their exploration history.
+**principle** when a user starts a story about an interest, an exploration record is created. The user progresses through the story's chapters and marks the story as completed when they finish exploring the activity. The completed exploration remains in their history.
 
 **state**
 
-a set of Explorations, each containing an owner User, an Interest, a Chapter, and a status
-
-a status that can be started or completed
+a set of Explorations, each containing:
+- an owner User
+- an Interest
+- a Story
+- a status (started or completed)
 
 **actions**
 
-startExploration (user: User, interest: Interest, chapter: Chapter): (exploration: Exploration)
+startExploration (user: User, interest: Interest, story: Story): (exploration: Exploration)
 
-> **where** chapter exists and user does not already have an exploration for chapter
+> **where** user does not already have an exploration for story
 
-> **then** create a new Exploration for user with interest, chapter, and status started, and return the exploration
+> **then** create a new Exploration for user with interest, story, and status started, and return the exploration
 
 completeExploration (user: User, exploration: Exploration): (exploration: Exploration)
 
@@ -344,21 +346,27 @@ getCompletedExplorations (user: User): (explorations: set Exploration)
 
 > **where** user has at least one completed exploration
 
-> **then** return all explorations belonging to user with status completed
+> **then** return all completed explorations belonging to user
+
+**note**
+
+An exploration represents an entire story, not an individual chapter. Users explicitly mark an exploration as completed after finishing the story. Completing a chapter does not automatically complete the exploration.
 
 ## Reflecting
 
-**concept** Reflecting [User, Interest]
+**concept** Reflecting [User, Story, Chapter]
 
-**purpose** provide users with a space to reflect on their thoughts and opinions about an explored interest. prevents users from not being able to explore their own personal thoughts about some experience.
+**purpose** provide users with a space to reflect on their thoughts and opinions after each chapter of a story; prevents users from losing their reflections and allows them to revisit how their thoughts developed throughout an exploration.
 
-**principle** after a user completes an interest story, they are provided with a space to record their thoughts.
+**principle** after reading a chapter, a user can record their thoughts about the experience. Each reflection is associated with a specific chapter, allowing users to reflect multiple times while exploring the same interest. Reflections can later be retrieved or edited.
 
 **state**
 
 a set of Journals with an owner User, and set of Pages
 
-a Page containing an Interest and text String
+a Page containing a Story, Chapter, and text String
+
+each Journal contains at most one Page per Chapter
 
 **actions**
 
@@ -368,23 +376,29 @@ createJournal (user: User): (journal: Journal)
 
 > **then** create an empty Journal for user
 
-write (user: User, text: String, interest: Interest): (page: Page)
+write (user: User, story: Story, chapter: Chapter, text: String): (page: Page)
 
-> **where** user has a journal and there is no page in their journal with Interest interest
+> **where** user has a journal and there is no page associated with chapter in their journal
 
-> **then** add a new Page, page, to user's Journal, with interest and text and return the new page to the user
+> **then** add a new Page containing story, chapter, and text to the user's Journal, and return the new page
 
-edit (user: User, text: String, interest: Interest): (page: Page)
+edit (user: User, chapter: Chapter, text: String): (page: Page)
 
-> **where** user has a journal and there is a page in their journal with the identifier of interest
+> **where** user has a journal and there is a page in their journal with chapter
 
-> **then** set the text of the page about interest to be the new text, and return the edited page to the user.
+> **then** update the text of the page and return the edited page
 
-read (user: User, interest: Interest): (page: Page)
+read (user: User, chapter: Chapter): (page: Page)
 
-> **where** user has a journal and there is a page in their journal with identifier of interest
+> **where** user has a journal and there is a page in their journal associated with chapter
 
-> **then** return to the user the text of the page identified by interest.
+> **then** return the page associated with chapter
+
+getJournal (user: User): (pages: set Page)
+
+> **where** user has a journal
+
+> **then** return all pages belonging to the user's journal
 
 **asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
 
@@ -393,15 +407,17 @@ read (user: User, interest: Interest): (page: Page)
 **Account creation -> Initialize interests**
 
 ```
-when Account.createAccount (user): (profile)
+when Account.createAccount (user, name, about, initialInterests): (profile)
 then InterestCollection.createCollection (user)
 ```
 
 ```
-when Account.createAccount (user, initialInterests)
+when Account.createAccount (user, name, about, initialInterests): (profile)
 where interest is in initialInterests
-then InterestCollections.addInterest (user, interest)
+then InterestCollection.addInterest (user, interest)
 ```
+
+
 
 **Onboarding completed -> Generate suggested activities**
 
@@ -417,7 +433,7 @@ then InterestGeneration.initialGeneration (user)
 ```
 when Requesting.selectActivity (session, interest, topic)
 where Sessioning.current (session): (user)
-where Account.getProfile (user): (about)
+where Account.getProfile (user): (profile, name, about, initialInterests)
 then StoryGeneration.generateStory (user, interest, topic, context: about)
 ```
 
@@ -427,3 +443,49 @@ then StoryGeneration.generateStory (user, interest, topic, context: about)
 when StoryGeneration.generateStory (user, interest): (chapter)
 then ExplorationTracking.startExploration (user, interest, chapter)
 ```
+
+**Reflection submitted -> Save reflection**
+
+```
+when Requesting.submitReflection (session, story, chapter, text)
+where Sessioning.current (session): (user)
+where StoryGeneration.getStory (user, story): (chapters)
+where chapter is in chapters
+then Reflecting.write (user, story, chapter, text)
+```
+
+**Reflection saved -> Generate next chapter**
+
+```
+when Reflecting.write (user, story, chapter, text): (page)
+where StoryGeneration.getStory (user, story): (chapters)
+where chapter is the latest chapter in chapters
+where chapter.question is not empty
+where size(chapters) < 3
+then StoryGeneration.continueStory (user, story, text)
+```
+
+**Exploration completed -> Update interest map**
+
+```
+when ExplorationTracking.completeExploration (user, exploration): (record)
+then InterestMap.addExploration (user, record)
+```
+
+**Story generation -> Start exploration**
+
+```
+when StoryGeneration.generateStory (user, interest, topic, context): (story, chapter)
+then ExplorationTracking.startExploration (user, interest, story)
+```
+
+**Story marked complete → Complete exploration**
+
+```
+when Requesting.completeStory (session, story)
+where Sessioning.current (session): (user)
+where ExplorationTracking.getExplorationHistory (user): (explorations)
+where exploration is in explorations and exploration.story = story
+then ExplorationTracking.completeExploration (user, exploration)
+```
+
