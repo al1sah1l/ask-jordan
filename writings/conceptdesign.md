@@ -29,6 +29,39 @@ authenticate (username: String, password: String): (account: Account)
 >
 > then return that account
 
+## Sessioning
+
+**concept** Sessioning [User]
+
+**purpose** keep a short-lived session for a user, so temporary access can end without changing that user's identity
+
+**principle** A session is started for a user. Until it expires, current resolves the session to that user. Ending the session makes it unknown, so another current call is refused. An invented or expired session is refused in the same way
+
+**state**
+
+a set of Sessions, each containing:
+
+- a user User
+- an expiresAt DateTime
+
+**actions**
+
+start (user: User): (session: Session, expiresAt: DateTime)
+
+> then delete every expired session, add a new session for that user expiring 24 hours from now, and return the session and when it expires
+
+current (session: Session): (user: User)
+
+> where the session is known and has not expired
+>
+> then return the user the session was started for
+
+end (session: Session)
+
+> where the session is known and has not expired
+>
+> then delete the session
+
 ## Account
 
 **concept** Account [User, Interest]
