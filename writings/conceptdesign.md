@@ -388,6 +388,39 @@ read (user: User, interest: Interest): (page: Page)
 
 **asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
 
-
-
 # Reactions
+
+**Account creation -> Initialize interests**
+
+```
+when Account.createAccount (user): (profile)
+then InterestCollection.createCollection (user)
+```
+
+```
+when Account.createAccount (user, initialInterests)
+where interest is in initialInterests
+then InterestCollections.addInterest (user, interest)
+```
+
+
+
+**Onboarding completed -> Generate suggested activities**
+
+```
+when Requesting.finishOnboarding (session)
+where Sessioning.current (session): (user)
+where InterestCollection.getInterests (user) is not empty
+then InterestGeneration.initialGeneration (user)
+```
+
+
+
+**Activity selected -> Generate story**
+
+```
+when Requesting.selectActivity (session, interest, topic)
+where Sessioning.current (session): (user)
+where Account.getProfile (user): (about)
+then StoryGeneration.generateStory (user, interest, topic, context: about)
+```
