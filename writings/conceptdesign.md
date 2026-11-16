@@ -403,8 +403,6 @@ where interest is in initialInterests
 then InterestCollections.addInterest (user, interest)
 ```
 
-
-
 **Onboarding completed -> Generate suggested activities**
 
 ```
@@ -414,8 +412,6 @@ where InterestCollection.getInterests (user) is not empty
 then InterestGeneration.initialGeneration (user)
 ```
 
-
-
 **Activity selected -> Generate story**
 
 ```
@@ -423,4 +419,11 @@ when Requesting.selectActivity (session, interest, topic)
 where Sessioning.current (session): (user)
 where Account.getProfile (user): (about)
 then StoryGeneration.generateStory (user, interest, topic, context: about)
+```
+
+**Story generated -> Start exploration**
+
+```
+when StoryGeneration.generateStory (user, interest): (chapter)
+then ExplorationTracking.startExploration (user, interest, chapter)
 ```
