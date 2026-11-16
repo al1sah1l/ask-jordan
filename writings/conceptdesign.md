@@ -19,17 +19,15 @@ a set of Accounts, each containing:
 
 register (username: String, password: String): (account: Account)
 
-where the username is 3 to 32 letters, digits, underscores, or hyphens, the password is 8 to 128 characters, and the username is not already registered
-
-then add a new account with that username and a salted verifier derived from the password, and return the account.
+> where the username is 3 to 32 letters, digits, underscores, or hyphens, the password is 8 to 128 characters, and the username is not already registered
+>
+> then add a new account with that username and a salted verifier derived from the password, and return the account
 
 authenticate (username: String, password: String): (account: Account)
 
-where an account exists for the username and the password matches its verifier
-
-then return that account.
-
-## Account
+> where an account exists for the username and the password matches its verifier
+>
+> then return that account
 
 ## Account
 
@@ -126,7 +124,7 @@ getRelatedInterests (user: User, interest: Interest): (interests: set Interest)
 
 **concept** InterestGeneration [User, Interest, Profile]
 
-**purpose** generate ideas for a user to explore based on their profile, allow users to explore new aspects of their interests that they might never have known about otherwise (ex: George is interested in soccer -> generates ideas like sports photography)
+**purpose** generate ideas for a user to explore based on their profile, allow users to explore new aspects of their interests that they might never have known about otherwise (ex: a user interested in soccer -> generates ideas like sports photography)
 
 **principle** using the users profile, a LLM generates new interests that a user could potentially be interested in. for example, a user has selected Soccer as one of their interests. initialGeneration returns sports photography and coaching.
 
@@ -215,6 +213,55 @@ getStory (user: User, story: Story): (chapters: sequence Chapter)
 where story belongs to user
 
 then return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
+
+## AvatarCustomizing
+
+**concept** AvatarCustomizing [User, Item]
+
+**purpose** allow a user to customize their avatar by equipping only items that have been granted to them
+
+**principle** when an item is granted to a user, they can equip it in a slot and later retrieve what they are wearing. Only one item can be equipped in a slot at a time. Equipping another item in the same slot replaces the item already there. An item that has not been granted cannot be equipped
+
+**state**
+
+a set of Holdings, each containing:
+
+- a user User
+- an item Item
+
+a set of Worn, each containing:
+
+- a user User
+- a slot Slot
+- an item Item
+
+A slot is HEAD or BODY. A user holds a given item at most once, wears at most one item in a slot, and wears only an item they hold.
+
+**actions**
+
+grant (user: User, item: Item)
+
+> where the user does not already hold the item
+>
+> then record that the user holds the item
+
+equip (user: User, item: Item, slot: Slot)
+
+> where the user holds the item
+>
+> then make that item the one worn in the slot, replacing whatever item was already worn there
+
+clear (user: User, slot: Slot)
+
+> where the user is wearing an item in the slot
+>
+> then remove it from that slot. The user still holds the item
+
+getEquipped (user: User): (worn: set Worn)
+
+> where the user has any holdings
+>
+> then return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
 
 ## InterestMap
 
