@@ -196,6 +196,12 @@ uninterested(user: User, interest: Interest)
 
 > **then** remove interest from user's LLM-generated and add interest to user's uninterested
 
+addInitialInterest (user: User, interest: Interest)
+
+> **where** interest is not already in the user's user-interested Interests
+
+> **then** add interest to the user's user-interested Interests
+
 **asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 
 ## StoryGeneration
@@ -300,7 +306,7 @@ getEquipped (user: User): (worn: set Worn)
 
 ## InterestMap
 
-## **ExplorationTracking**
+## ExplorationTracking
 
 **concept** ExplorationTracking [User, Interest, Story]
 
@@ -412,12 +418,17 @@ then InterestCollection.createCollection (user)
 ```
 
 ```
-when Account.createAccount (user, name, about, initialInterests): (profile)
+when InterestCollection.createCollection (user): (collection)
+where Account.getProfile (user): (profile, name, about, initialInterests)
 where interest is in initialInterests
 then InterestCollection.addInterest (user, interest)
 ```
+**Interest added → Update InterestGeneration**
 
-
+```
+when InterestCollection.addInterest (user, interest): (collection)
+then InterestGeneration.addInitialInterest (user, interest)
+```
 
 **Onboarding completed -> Generate suggested activities**
 
@@ -440,8 +451,8 @@ then StoryGeneration.generateStory (user, interest, topic, context: about)
 **Story generated -> Start exploration**
 
 ```
-when StoryGeneration.generateStory (user, interest): (chapter)
-then ExplorationTracking.startExploration (user, interest, chapter)
+when StoryGeneration.generateStory (user, interest, topic, context): (story, chapter)
+then ExplorationTracking.startExploration (user, interest, story)
 ```
 
 **Reflection submitted -> Save reflection**
@@ -472,13 +483,6 @@ when ExplorationTracking.completeExploration (user, exploration): (record)
 then InterestMap.addExploration (user, record)
 ```
 
-**Story generation -> Start exploration**
-
-```
-when StoryGeneration.generateStory (user, interest, topic, context): (story, chapter)
-then ExplorationTracking.startExploration (user, interest, story)
-```
-
 **Story marked complete → Complete exploration**
 
 ```
@@ -489,3 +493,9 @@ where exploration is in explorations and exploration.story = story
 then ExplorationTracking.completeExploration (user, exploration)
 ```
 
+**Account created → Create reflection journal**
+
+```
+when Account.createAccount (user, name, about, initialInterests): (profile)
+then Reflecting.createJournal (user)
+```
