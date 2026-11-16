@@ -1,4 +1,6 @@
-# Ask Jordan Concept Design
+# Concept Design
+
+# Concepts
 
 ## Authenticating
 
@@ -385,3 +387,107 @@ read (user: User, interest: Interest): (page: Page)
 > **then** return to the user the text of the page identified by interest.
 
 **asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
+
+
+
+
+
+
+
+# Reactions
+
+### Sign in
+
+Registering or authenticating starts a session for the account that was just returned
+
+```
+when Authenticating.register (): (account)
+then Sessioning.start (user: account)
+```
+
+```
+when Authenticating.authenticate (): (account)
+then Sessioning.start (user: account)
+```
+
+A request that needs a signed-in user follows the same check. If `current` refuses, the profile action does not run
+
+```
+when Requesting.readProfile (session)
+where Sessioning.current (session): (user)
+then Account.getProfile (user)
+```
+
+### Profile to collection
+
+Creating a profile opens an empty collection, and each chosen starting interest is added to it
+
+```
+when Account.createAccount (user): (profile)
+then InterestCollection.createCollection (user)
+```
+
+```
+when Account.createAccount (user, initialInterests)
+where interest is in initialInterests
+then InterestCollection.addInterest (user, interest)
+```
+
+```
+when InterestGeneration.interested (user, interest)
+then InterestCollection.addInterest (user, interest)
+```
+
+### Ideas
+
+`initialGeneration` only runs when InterestGeneration already holds user-interested interests, and no action records a starting interest there
+
+```
+when InterestGeneration.interested (user, interest)
+where InterestGeneration: the user's generated set has fewer than 3 interests
+then InterestGeneration.modifyingGeneration (user)
+```
+
+```
+when InterestGeneration.uninterested (user, interest)
+where InterestGeneration: the user's generated set has fewer than 3 interests
+then InterestGeneration.modifyingGeneration (user)
+```
+
+### Story and progress
+
+```
+when Requesting.explore (session, interest, topic)
+where Sessioning.current (session): (user)
+where Account.getProfile (user): (about)
+then StoryGeneration.generateStory (user, interest, topic, context: about)
+```
+
+```
+when StoryGeneration.generateStory (user, interest): (chapter)
+then ExplorationTracking.startExploration (user, interest, chapter)
+```
+
+```
+when StoryGeneration.continueStory (user, story): (chapter)
+where StoryGeneration: story is for interest
+then ExplorationTracking.startExploration (user, interest, chapter)
+```
+
+`completeExploration` takes an exploration not an entire chapter
+
+```
+when StoryGeneration.continueStory (user, story): (chapter)
+where StoryGeneration: chapter is position 3 and story is for interest
+where ExplorationTracking: exploration is the started exploration for that user, interest, and chapter
+then ExplorationTracking.completeExploration (user, exploration)
+```
+
+### Reflection
+
+journal is created when a story is completed
+
+```
+when ExplorationTracking.completeExploration (user)
+then Reflecting.createJournal (user)
+```
