@@ -1,10 +1,45 @@
 # Ask Jordan Concept Design
 
-
 ## Authentication
 
+## Account
 
 ## Account
+
+**concept** Account [User, Interest]
+
+**purpose** allow users to describe themselves so that their exploration experience can reflect their background and starting interests without requiring them to repeatedly enter the same information.
+
+**principle** when a user creates an account profile, they provide a display name, an optional description of themselves, and select initial interests. They can later retrieve their profile and update their name or description. Their initial interests provide a starting point for discovering new interests.
+
+**state**
+
+a set of Profiles, each containing:
+
+- a unique owner User
+- a name String
+- an about String
+- an initialInterests set of Interests
+
+**actions**
+
+createAccount (user: User, name: String, about: String, initialInterests: set Interest): (profile: Profile)
+
+where user does not yet have a profile and name is not blank
+
+then create a Profile belonging to user with the given name, about, and initialInterests, and return the profile. The about text and initialInterests may be empty.
+
+updateProfile (user: User, name: String, about: String)
+
+where user has a profile and name is not blank
+
+then replace the profile’s name and about with the supplied values.
+
+getProfile (user: User): (profile: Profile, name: String, about: String, initialInterests: set Interest)
+
+where user has a profile
+
+then return the user’s profile and its stored name, about, and initialInterests without changing them.
 
 ## InterestCollection
 
@@ -30,13 +65,11 @@ createCollection (user: User): (collection: Collection)
 
 > **then** create an empty Collection for user
 
-
 addInterest (user: User, interest: Interest): (collection: Collection)
 
 > **where** user has a collection and interest is not already in the collection
 
 > **then** add interest to the user's collection and return the updated collection
-
 
 removeInterest (user: User, interest: Interest): (collection: Collection)
 
@@ -44,20 +77,17 @@ removeInterest (user: User, interest: Interest): (collection: Collection)
 
 > **then** remove interest and its connections from the user's collection and return the updated collection
 
-
 connectInterests (user: User, interest1: Interest, interest2: Interest): (connection: Connection)
 
 > **where** user has a collection containing both interests, the interests are different, and no connection between them exists
 
 > **then** create a Connection between interest1 and interest2 and return the new connection
 
-
 getInterests (user: User): (interests: set Interest)
 
 > **where** user has a collection
 
 > **then** return all interests in the user's collection
-
 
 getRelatedInterests (user: User, interest: Interest): (interests: set Interest)
 
@@ -106,11 +136,58 @@ uninterested(user: User, interest: Interest)
 
 > **then** remove interest from user's LLM-generated and add interest to user's uninterested
 
-
 **asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 
-
 ## StoryGeneration
+
+**concept** StoryGeneration [User, Interest]
+
+**purpose** help users explore an unfamiliar interest through a personalized narrative that connects their choices to concrete activities they can try.
+
+**principle** when a user chooses an interest, they receive the first chapter of a story introducing that interest through a relatable situation. The chapter asks what they would do next. Their answer shapes the following chapter, allowing them to explore different aspects of the interest. The final chapter concludes the story and suggests a related activity to try.
+
+**state**
+
+a set of Stories, each containing:
+
+- an owner User
+- an Interest
+- a topic String describing the interest
+- a context String containing personalization information
+- an ordered sequence of Chapters
+
+a set of Chapters, each containing:
+
+- a story Story
+- a position Integer
+- a text String
+- an optional question String
+- an optional answer String
+- an optional activity String
+
+Each Story contains between one and three Chapters.
+
+**actions**
+
+generateStory (user: User, interest: Interest, topic: String, context: String): (story: Story, chapter: Chapter)
+
+**where** topic is not blank
+
+**then** use an LLM to generate the first chapter of a new story about topic, personalized using context. Create a Story belonging to user and associated with interest, topic, and context. Create its first Chapter with position 1, generated text, a question, and no answer or activity. Return the story and chapter.
+
+continueStory (user: User, story: Story, answer: String): (chapter: Chapter)
+
+where story belongs to user, its latest chapter has an unanswered question, answer is not blank, and the story contains fewer than three chapters
+
+then use an LLM to generate the next chapter using the story’s topic, context, previous chapters, previous answers, and the supplied answer. Record the supplied answer on the previous chapter and append the new Chapter with the next position.
+
+If the new chapter has position 2, give it a question and no activity. If it has position 3, conclude the story, give it a concrete activity related to the interest, and give it no question. Return the new chapter.
+
+getStory (user: User, story: Story): (chapters: sequence Chapter)
+
+where story belongs to user
+
+then return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
 
 ## AvatarCustomization
 
@@ -138,13 +215,11 @@ startExploration (user: User, interest: Interest, chapter: Chapter): (exploratio
 
 > **then** create a new Exploration for user with interest, chapter, and status started, and return the exploration
 
-
 completeExploration (user: User, exploration: Exploration): (exploration: Exploration)
 
 > **where** exploration belongs to user and has status started
 
 > **then** change the exploration's status to completed and return the updated exploration
-
 
 getExploration (user: User, exploration: Exploration): (exploration: Exploration)
 
@@ -152,13 +227,11 @@ getExploration (user: User, exploration: Exploration): (exploration: Exploration
 
 > **then** return the exploration and its current status
 
-
 getExplorationHistory (user: User): (explorations: set Exploration)
 
 > **where** user has at least one exploration
 
 > **then** return all explorations belonging to user
-
 
 getCompletedExplorations (user: User): (explorations: set Exploration)
 
@@ -180,7 +253,6 @@ a set of Journals with an owner User, and set of Pages
 
 a Page containing an Interest and text String
 
-
 **actions**
 
 createJournal (user: User): (journal: Journal)
@@ -189,20 +261,17 @@ createJournal (user: User): (journal: Journal)
 
 > **then** create an empty Journal for user
 
-
 write (user: User, text: String, interest: Interest): (page: Page)
 
 > **where** user has a journal and there is no page in their journal with Interest interest
 
 > **then** add a new Page, page, to user's Journal, with interest and text and return the new page to the user
 
-
 edit (user: User, text: String, interest: Interest): (page: Page)
 
 > **where** user has a journal and there is a page in their journal with the identifier of interest
 
 > **then** set the text of the page about interest to be the new text, and return the edited page to the user.
-
 
 read (user: User, interest: Interest): (page: Page)
 
