@@ -320,8 +320,6 @@ getEquipped (user: User): (worn: set Worn)
 >
 > then return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
 
-<<<<<<< HEAD
-=======
 **note**
 
 `grant` has no caller. The user can only equip an item they already hold, so until some other action grants one, there is nothing to put on the avatar.
@@ -332,7 +330,6 @@ getEquipped (user: User): (worn: set Worn)
 
 The map is a view of the interests in the collection and the explorations that have been completed. It does not keep its own copy, so nothing has to write to it when an exploration finishes.
 
->>>>>>> 855fb39 (polishing v1)
 ## ExplorationTracking
 
 **concept** ExplorationTracking [User, Interest, Story]
@@ -514,11 +511,8 @@ where size(chapters) < 3
 then StoryGeneration.continueStory (user, story, text)
 ```
 
-<<<<<<< HEAD
-=======
 The text the user just saved is the answer `continueStory` uses. This only happens when that chapter is the latest one, it still asks a question, and the story has fewer than three chapters.
 
->>>>>>> 855fb39 (polishing v1)
 **Story marked complete → Complete exploration**
 
 ```
