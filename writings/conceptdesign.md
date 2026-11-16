@@ -304,8 +304,6 @@ getEquipped (user: User): (worn: set Worn)
 >
 > then return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
 
-## InterestMap
-
 ## ExplorationTracking
 
 **concept** ExplorationTracking [User, Interest, Story]
@@ -474,13 +472,6 @@ where chapter is the latest chapter in chapters
 where chapter.question is not empty
 where size(chapters) < 3
 then StoryGeneration.continueStory (user, story, text)
-```
-
-**Exploration completed -> Update interest map**
-
-```
-when ExplorationTracking.completeExploration (user, exploration): (record)
-then InterestMap.addExploration (user, record)
 ```
 
 **Story marked complete → Complete exploration**
