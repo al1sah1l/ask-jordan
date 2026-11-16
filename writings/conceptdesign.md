@@ -31,6 +31,10 @@ authenticate (username: String, password: String): (account: Account)
 >
 > then return that account
 
+**note**
+
+A later request does not include a user id. It includes a session, and `current` is what turns that session back into the account this concept returned.
+
 ## Sessioning
 
 **concept** Sessioning [User]
@@ -63,6 +67,10 @@ end (session: Session)
 > where the session is known and has not expired
 >
 > then delete the session
+
+**note**
+
+The user on a session is the account Authenticating just returned. After sign-in, other actions recover that user by calling `current` on the session.
 
 ## Account
 
@@ -204,6 +212,10 @@ addInitialInterest (user: User, interest: Interest)
 
 **asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 
+**note**
+
+`initialGeneration` only runs when this concept already has interests the user wants. It does not read the profile description. Those interests arrive through `addInitialInterest`, which the collection calls when an interest is added there. If that has not happened, there is nothing to generate from.
+
 ## StoryGeneration
 
 **concept** StoryGeneration [User, Interest]
@@ -255,6 +267,10 @@ where story belongs to user
 
 then return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
 
+**note**
+
+`context` is the about text from the user's profile, not a second copy of the profile. When a model call cannot be used, `generateStory` can return a story we wrote ahead of time for that interest, and the rest of the path still has a chapter to show.
+
 ## AvatarCustomizing
 
 **concept** AvatarCustomizing [User, Item]
@@ -304,6 +320,19 @@ getEquipped (user: User): (worn: set Worn)
 >
 > then return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
 
+<<<<<<< HEAD
+=======
+**note**
+
+`grant` has no caller. The user can only equip an item they already hold, so until some other action grants one, there is nothing to put on the avatar.
+
+## InterestMap
+
+**note**
+
+The map is a view of the interests in the collection and the explorations that have been completed. It does not keep its own copy, so nothing has to write to it when an exploration finishes.
+
+>>>>>>> 855fb39 (polishing v1)
 ## ExplorationTracking
 
 **concept** ExplorationTracking [User, Interest, Story]
@@ -404,7 +433,9 @@ getJournal (user: User): (pages: set Page)
 
 > **then** return all pages belonging to the user's journal
 
-**asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
+**note**
+
+A journal holds at most one page per chapter, and the page is the user's writing about that chapter. Saving the page does not mark the story or the exploration complete.
 
 # Reactions
 
@@ -421,6 +452,9 @@ where Account.getProfile (user): (profile, name, about, initialInterests)
 where interest is in initialInterests
 then InterestCollection.addInterest (user, interest)
 ```
+
+The collection has to exist before an interest can be put in it, so the empty collection is created first. If the user did not name any interests, the collection is still created and the second reaction has nothing to add.
+
 **Interest added → Update InterestGeneration**
 
 ```
@@ -437,6 +471,8 @@ where InterestCollection.getInterests (user) is not empty
 then InterestGeneration.initialGeneration (user)
 ```
 
+`initialGeneration` only runs when InterestGeneration already has interests the user wants. Those get there when an interest is added to the collection. If that copy has not happened, this reaction does not run.
+
 **Activity selected -> Generate story**
 
 ```
@@ -446,12 +482,16 @@ where Account.getProfile (user): (profile, name, about, initialInterests)
 then StoryGeneration.generateStory (user, interest, topic, context: about)
 ```
 
+`about` is the description saved on the profile. `generateStory` does not take an argument by that name. It takes `context`, so the description we just read is passed in as the context.
+
 **Story generated -> Start exploration**
 
 ```
 when StoryGeneration.generateStory (user, interest, topic, context): (story, chapter)
 then ExplorationTracking.startExploration (user, interest, story)
 ```
+
+The story that comes back is what opens the exploration. The chapter that comes back with it is not an exploration, and finishing a chapter does not finish this record.
 
 **Reflection submitted -> Save reflection**
 
@@ -474,6 +514,11 @@ where size(chapters) < 3
 then StoryGeneration.continueStory (user, story, text)
 ```
 
+<<<<<<< HEAD
+=======
+The text the user just saved is the answer `continueStory` uses. This only happens when that chapter is the latest one, it still asks a question, and the story has fewer than three chapters.
+
+>>>>>>> 855fb39 (polishing v1)
 **Story marked complete → Complete exploration**
 
 ```
@@ -483,6 +528,8 @@ where ExplorationTracking.getExplorationHistory (user): (explorations)
 where exploration is in explorations and exploration.story = story
 then ExplorationTracking.completeExploration (user, exploration)
 ```
+
+The user marks the story complete, and that is what completes the exploration. Saving a reflection does not.
 
 **Account created → Create reflection journal**
 
