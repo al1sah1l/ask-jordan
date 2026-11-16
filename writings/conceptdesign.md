@@ -1,6 +1,33 @@
 # Ask Jordan Concept Design
 
-## Authentication
+## Authenticating
+
+**concept** Authenticating
+
+**purpose** Establish a username from a password, so an identity claim alone cannot act as proof of identity.
+
+**principle** a user registers their username with a password. Another registration with the same username is then refused. Authenticating the username with the wrong password is refused, and the correct password authenticates, returning the user's account, bound to that username
+
+**state**
+
+a set of Accounts, each containing:
+
+- a unique username String
+- a passwordVerifier String
+
+**actions**
+
+register (username: String, password: String): (account: Account)
+
+where the username is 3 to 32 letters, digits, underscores, or hyphens, the password is 8 to 128 characters, and the username is not already registered
+
+then add a new account with that username and a salted verifier derived from the password, and return the account.
+
+authenticate (username: String, password: String): (account: Account)
+
+where an account exists for the username and the password matches its verifier
+
+then return that account.
 
 ## Account
 
@@ -188,8 +215,6 @@ getStory (user: User, story: Story): (chapters: sequence Chapter)
 where story belongs to user
 
 then return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
-
-## AvatarCustomization
 
 ## InterestMap
 
