@@ -196,7 +196,7 @@ uninterested(user: User, interest: Interest)
 
 > **then** remove interest from user's LLM-generated and add interest to user's uninterested
 
-**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
+**Notes** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 
 ## StoryGeneration
 
@@ -386,7 +386,7 @@ read (user: User, interest: Interest): (page: Page)
 
 > **then** return to the user the text of the page identified by interest.
 
-**asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
+**Notes** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
 
 
 
