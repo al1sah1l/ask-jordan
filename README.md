@@ -4,6 +4,8 @@
 
 - [F2: Problem Framing](writings/F2.md)
 
+- [F3](writings/F3.md)
+
 - [F3: concept design](writings/conceptdesign.md)
 
 ## Visual Design Study
@@ -12,3 +14,7 @@
 - [Visual Design Study Colors2](visualdesignstudy/colors2.jpg)
 
 - [Visual Design Study Typescript](visualdesignstudy/typescripts.jpg)
+
+- [Visual Design Study Layouts](visualdesignstudy/layouts.jpg)
+
+- [Visual Design Study Sources About Colors](visualdesignstudy/sourcesaboutcolors.jpg)

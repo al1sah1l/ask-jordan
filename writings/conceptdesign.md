@@ -1,5 +1,7 @@
 # Concept Design
 
+The Account stores the user’s profile, while InterestCollection keeps track of what interests George saves. InterestGeneration recommends new interests based on what George accepts or rejects. StoryGeneration manages the chapters, and ExplorationTracking keeps one record for each story, with only `completeStory` marking it as finished. Reflecting stores the reflection page.
+
 # Concepts
 
 ## Authenticating
@@ -215,8 +217,12 @@ addInitialInterest (user: User, interest: Interest)
 
 > **then** add interest to the user's user-interested Interests
 
+<<<<<<< HEAD
 **asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
 >>>>>>> 6d367013de0972b058367d638ce413e9a88c4e28
+=======
+**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
+>>>>>>> 723dc53 (wrapping up F3)
 
 **note**
 
@@ -330,12 +336,6 @@ getEquipped (user: User): (worn: set Worn)
 
 `grant` has no caller. The user can only equip an item they already hold, so until some other action grants one, there is nothing to put on the avatar.
 
-## InterestMap
-
-**note**
-
-The map is a view of the interests in the collection and the explorations that have been completed. It does not keep its own copy, so nothing has to write to it when an exploration finishes.
-
 ## ExplorationTracking
 
 **concept** ExplorationTracking [User, Interest, Story]
@@ -347,6 +347,7 @@ The map is a view of the interests in the collection and the explorations that h
 **state**
 
 a set of Explorations, each containing:
+
 - an owner User
 - an Interest
 - a Story
