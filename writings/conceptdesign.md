@@ -23,15 +23,15 @@ a set of Accounts, each containing:
 
 register (username: String, password: String): (account: Account)
 
-> where the username is 3 to 32 letters, digits, underscores, or hyphens, the password is 8 to 128 characters, and the username is not already registered
->
-> then add a new account with that username and a salted verifier derived from the password, and return the account
+> **where** the username is 3 to 32 letters, digits, underscores, or hyphens, the password is 8 to 128 characters, and the username is not already registered
+
+> **then** add a new account with that username and a salted verifier derived from the password, and return the account
 
 authenticate (username: String, password: String): (account: Account)
 
-> where an account exists for the username and the password matches its verifier
->
-> then return that account
+> **where** an account exists for the username and the password matches its verifier
+
+> **then** return that account
 
 **note**
 
@@ -56,19 +56,19 @@ a set of Sessions, each containing:
 
 start (user: User): (session: Session, expiresAt: DateTime)
 
-> then delete every expired session, add a new session for that user expiring 24 hours from now, and return the session and when it expires
+> **then** delete every expired session, add a new session for that user expiring 24 hours from now, and return the session and when it expires
 
 current (session: Session): (user: User)
 
-> where the session is known and has not expired
->
-> then return the user the session was started for
+> **where** the session is known and has not expired
+
+> **then** return the user the session was started for
 
 end (session: Session)
 
-> where the session is known and has not expired
->
-> then delete the session
+> **where** the session is known and has not expired
+
+> **then** delete the session
 
 **note**
 
@@ -95,21 +95,21 @@ a set of Profiles, each containing:
 
 createAccount (user: User, name: String, about: String, initialInterests: set Interest): (profile: Profile)
 
-where user does not yet have a profile and name is not blank
+> **where** user does not yet have a profile and name is not blank
 
-then create a Profile belonging to user with the given name, about, and initialInterests, and return the profile. The about text and initialInterests may be empty.
+> **then** create a Profile belonging to user with the given name, about, and initialInterests, and return the profile. The about text and initialInterests may be empty.
 
 updateProfile (user: User, name: String, about: String)
 
-where user has a profile and name is not blank
+> **where** user has a profile and name is not blank
 
-then replace the profile’s name and about with the supplied values.
+> **then** replace the profile’s name and about with the supplied values.
 
 getProfile (user: User): (profile: Profile, name: String, about: String, initialInterests: set Interest)
 
-where user has a profile
+> **where** user has a profile
 
-then return the user’s profile and its stored name, about, and initialInterests without changing them.
+> **then** return the user’s profile and its stored name, about, and initialInterests without changing them.
 
 ## InterestCollection
 
@@ -206,23 +206,15 @@ uninterested(user: User, interest: Interest)
 
 > **then** remove interest from user's LLM-generated and add interest to user's uninterested
 
-<<<<<<< HEAD
-**Notes** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
-||||||| a269b5b
-**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
-=======
 addInitialInterest (user: User, interest: Interest)
 
 > **where** interest is not already in the user's user-interested Interests
 
 > **then** add interest to the user's user-interested Interests
 
-<<<<<<< HEAD
-**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
->>>>>>> 6d367013de0972b058367d638ce413e9a88c4e28
-=======
-**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.
->>>>>>> 723dc53 (wrapping up F3)
+  
+**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.  
+
 
 **note**
 
@@ -261,23 +253,21 @@ Each Story contains between one and three Chapters.
 
 generateStory (user: User, interest: Interest, topic: String, context: String): (story: Story, chapter: Chapter)
 
-**where** topic is not blank
+> **where** topic is not blank
 
-**then** use an LLM to generate the first chapter of a new story about topic, personalized using context. Create a Story belonging to user and associated with interest, topic, and context. Create its first Chapter with position 1, generated text, a question, and no answer or activity. Return the story and chapter.
+> **then** use an LLM to generate the first chapter of a new story about topic, personalized using context. Create a Story belonging to user and associated with interest, topic, and context. Create its first Chapter with position 1, generated text, a question, and no answer or activity. Return the story and chapter.
 
 continueStory (user: User, story: Story, answer: String): (chapter: Chapter)
 
-where story belongs to user, its latest chapter has an unanswered question, answer is not blank, and the story contains fewer than three chapters
+> **where** story belongs to user, its latest chapter has an unanswered question, answer is not blank, and the story contains fewer than three chapters
 
-then use an LLM to generate the next chapter using the story’s topic, context, previous chapters, previous answers, and the supplied answer. Record the supplied answer on the previous chapter and append the new Chapter with the next position.
-
-If the new chapter has position 2, give it a question and no activity. If it has position 3, conclude the story, give it a concrete activity related to the interest, and give it no question. Return the new chapter.
+> **then** use an LLM to generate the next chapter using the story’s topic, context, previous chapters, previous answers, and the supplied answer. Record the supplied answer on the previous chapter and append the new Chapter with the next position. If the new chapter has position 2, give it a question and no activity. If it has position 3, conclude the story, give it a concrete activity related to the interest, and give it no question. Return the new chapter.
 
 getStory (user: User, story: Story): (chapters: sequence Chapter)
 
-where story belongs to user
+> **where** story belongs to user
 
-then return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
+> **then** return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
 
 **note**
 
@@ -310,27 +300,27 @@ A slot is HEAD or BODY. A user holds a given item at most once, wears at most on
 
 grant (user: User, item: Item)
 
-> where the user does not already hold the item
->
-> then record that the user holds the item
+> **where** the user does not already hold the item
+
+> **then** record that the user holds the item
 
 equip (user: User, item: Item, slot: Slot)
 
-> where the user holds the item
->
-> then make that item the one worn in the slot, replacing whatever item was already worn there
+> **where** the user holds the item
+
+> **then** make that item the one worn in the slot, replacing whatever item was already worn there
 
 clear (user: User, slot: Slot)
 
-> where the user is wearing an item in the slot
->
-> then remove it from that slot. The user still holds the item
+> **where** the user is wearing an item in the slot
+
+> **then** remove it from that slot. The user still holds the item
 
 getEquipped (user: User): (worn: set Worn)
 
-> where the user has any holdings
->
-> then return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
+> **where** the user has any holdings
+
+> **then** return the items the user is wearing and the slot of each, without changing them. A user wearing nothing returns an empty set
 
 **note**
 
@@ -431,13 +421,7 @@ read (user: User, chapter: Chapter): (page: Page)
 
 > **then** return the page associated with chapter
 
-<<<<<<< HEAD
-**Notes** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
-||||||| a269b5b
-**asides** The Reflecting concept is designed to be utilized after a user explores a generated story about an interest. It is meant as a space for the user to reflect on their thoughts about an interest/career path.
-=======
 getJournal (user: User): (pages: set Page)
->>>>>>> 6d367013de0972b058367d638ce413e9a88c4e28
 
 > **where** user has a journal
 
