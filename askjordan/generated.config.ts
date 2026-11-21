@@ -8,6 +8,10 @@ export default {
     version: 1,
     documents: [
       new URL("./design/types.md", import.meta.url),
+      new URL(
+        "./design/compositions/ExplorationFlow.md",
+        import.meta.url,
+      ),
     ],
   },
 };

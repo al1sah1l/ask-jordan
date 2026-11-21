@@ -116,6 +116,17 @@ Concrete types:
 
 ## Reactions
 
+### AskJordan.StoryExploration.StoryCreatedStartsExploration
+
+Authored path: `AskJordan.StoryExploration.StoryCreatedStartsExploration`.
+- Covered by [Ask Jordan — Story Exploration Composition](../design/compositions/ExplorationFlow.md), line 14.
+
+```reaction
+when StoryGeneration.generateStory (user, story)
+then
+  ExplorationTracking.startExploration (story, user)
+```
+
 ### DeliverFaultToAsker
 
 ```reaction
