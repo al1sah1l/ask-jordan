@@ -1,27 +1,31 @@
-# Ask Jordan Application Types
+# Ask Jordan application types
 
-Ask Jordan helps students explore interests through activities and interactive stories. Users can express preferences, receive activity suggestions, generate stories, and track the stories they start and complete.
-
-The application uses a shared user identity. InterestCollection owns the activity catalog. StoryGeneration owns stories, and ExplorationTracking refers to those same stories rather than introducing separate story identities.
-
-```types
-concrete User
-  A student using Ask Jordan.
-```
+A user is the account Authenticating returned. A session, a profile, and an avatar use that account. InterestCollection owns activities. StoryGeneration owns stories, and ExplorationTracking uses those stories. Items are not created by any concept yet.
 
 ```instances
+instantiate Authenticating
+
+instantiate Sessioning with
+  User is Authenticating.Account
+
+instantiate Account with
+  User is Authenticating.Account
+
+instantiate AvatarCustomizing with
+  User is Authenticating.Account
+
 instantiate InterestCollection with
-  User is User
+  User is Authenticating.Account
 
 instantiate ExplorationTracking with
-  User is User
+  User is Authenticating.Account
   Story is StoryGeneration.Story
 
 instantiate InterestGeneration with
-  User is User
+  User is Authenticating.Account
   Activity is InterestCollection.Activity
 
 instantiate StoryGeneration with
-  User is User
+  User is Authenticating.Account
   Activity is InterestCollection.Activity
 ```
