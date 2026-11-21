@@ -27,9 +27,9 @@ Defined in [ExplorationTracking](../design/concepts/ExplorationTracking.md), lin
 
 #### Instances
 
-- `ExplorationTracking` — instance of `ExplorationTracking` — [Ask Jordan Application Types](../design/types.md), line 18.
-  - `Story` is `Story` — [Ask Jordan Application Types](../design/types.md), line 20.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 19.
+- `ExplorationTracking` — instance of `ExplorationTracking` — [Ask Jordan Application Types](../design/types.md), line 16.
+  - `Story` is `StoryGeneration.Story` — [Ask Jordan Application Types](../design/types.md), line 18.
+  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 17.
 
 ### InterestCollection
 
@@ -62,15 +62,57 @@ Defined in [InterestCollection](../design/concepts/InterestCollection.md), line 
 
 #### Instances
 
-- `InterestCollection` — instance of `InterestCollection` — [Ask Jordan Application Types](../design/types.md), line 15.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 16.
+- `InterestCollection` — instance of `InterestCollection` — [Ask Jordan Application Types](../design/types.md), line 13.
+  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 14.
+
+### InterestGeneration
+
+Defined in [InterestGeneration](../design/concepts/InterestGeneration.md), line 2.
+
+#### Actions
+
+- `generateSuggestions(user: User, preferences: PreferenceCatalog, activities: ActivityCatalog, connections: ConnectionCatalog, startedActivities: ActivityIds) : returns (suggestions: SuggestionIds)`
+  - Refuses `NO_ACTIVITIES_AVAILABLE`: No activities are available for suggestions.
+- `dismissSuggestion(user: User, suggestion: Suggestion) : returns (suggestion: Suggestion)`
+  - Refuses `SUGGESTION_NOT_FOUND`: No pending suggestion exists for this user.
+
+#### Queries
+
+- `_getSuggestions(user: User) : many (suggestion: Suggestion, user: User, activity: Activity, status: Status)`
+
+#### Instances
+
+- `InterestGeneration` — instance of `InterestGeneration` — [Ask Jordan Application Types](../design/types.md), line 20.
+  - `Activity` is `InterestCollection.Activity` — [Ask Jordan Application Types](../design/types.md), line 22.
+  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 21.
+
+### StoryGeneration
+
+Defined in [StoryGeneration](../design/concepts/StoryGeneration.md), line 2.
+
+#### Actions
+
+- `generateStory(user: User, activity: Activity, context: String) : returns (story: Story, chapter: Chapter)`
+  - Refuses `STORY_ALREADY_EXISTS`: This user already has a story for this activity.
+- `continueStory(user: User, story: Story, answer: String) : returns (chapter: Chapter)`
+  - Refuses `STORY_NOT_FOUND`: This story does not belong to the user.
+  - Refuses `INVALID_STORY_ANSWER`: An answer cannot be blank.
+  - Refuses `STORY_CANNOT_CONTINUE`: The story cannot be continued.
+- `getStory(user: User, story: Story) : returns (chapters: ChapterList)`
+  - Refuses `STORY_NOT_FOUND`: This story does not belong to the user.
+- `getStories(user: User) : returns (stories: StoryList)`
+
+#### Instances
+
+- `StoryGeneration` — instance of `StoryGeneration` — [Ask Jordan Application Types](../design/types.md), line 24.
+  - `Activity` is `InterestCollection.Activity` — [Ask Jordan Application Types](../design/types.md), line 26.
+  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 25.
 
 ## Application types
 
 Concrete types:
 
-- `Story` — [Ask Jordan Application Types](../design/types.md), line 10.
-- `User` — [Ask Jordan Application Types](../design/types.md), line 7.
+- `User` — [Ask Jordan Application Types](../design/types.md), line 8.
 
 ## Reactions
 
