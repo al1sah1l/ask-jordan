@@ -1,6 +1,6 @@
 # Concept Design
 
-The Account stores the user’s profile, while InterestCollection keeps track of what interests George saves. InterestGeneration recommends new interests based on what George accepts or rejects. StoryGeneration manages the chapters, and ExplorationTracking keeps one record for each story, with only `completeStory` marking it as finished. Reflecting stores the reflection page.
+Account stores the user's profile, while InterestCollection maintains topics, activities, their connections, and the user's expressed preferences. InterestGeneration suggests activities using those preferences without storing another copy of them. StoryGeneration manages stories and chapters for selected activities, while ExplorationTracking records which stories the user has started or completed. Reflecting stores the user's responses to individual chapters. The interest map is a frontend visualization of these concepts rather than a separate concept.
 
 # Concepts
 
@@ -76,202 +76,215 @@ The user on a session is the account Authenticating just returned. After sign-in
 
 ## Account
 
-**concept** Account [User, Interest]
+**concept** Account [User]
 
-**purpose** allow users to describe themselves so that their exploration experience can reflect their background and starting interests without requiring them to repeatedly enter the same information.
+**purpose** allow users to describe themselves so that stories can reflect their background without requiring them to enter the same information repeatedly.
 
-**principle** when a user creates an account profile, they provide a display name, an optional description of themselves, and select initial interests. They can later retrieve their profile and update their name or description. Their initial interests provide a starting point for discovering new interests.
+**principle** a user creates a profile with a display name and optional description. They can retrieve and update that information later. Interests are managed separately by InterestCollection.
 
 **state**
 
 a set of Profiles, each containing:
-
 - a unique owner User
 - a name String
 - an about String
-- an initialInterests set of Interests
 
 **actions**
 
-createAccount (user: User, name: String, about: String, initialInterests: set Interest): (profile: Profile)
+createAccount (user: User, name: String, about: String): (profile: Profile)
 
 > **where** user does not yet have a profile and name is not blank
 
-> **then** create a Profile belonging to user with the given name, about, and initialInterests, and return the profile. The about text and initialInterests may be empty.
+> **then** create a Profile belonging to user with the given name and about, and return it
 
 updateProfile (user: User, name: String, about: String)
 
 > **where** user has a profile and name is not blank
 
-> **then** replace the profile’s name and about with the supplied values.
+> **then** replace the profile's name and about with the supplied values
 
-getProfile (user: User): (profile: Profile, name: String, about: String, initialInterests: set Interest)
+getProfile (user: User): (profile: Profile, name: String, about: String)
 
 > **where** user has a profile
 
-> **then** return the user’s profile and its stored name, about, and initialInterests without changing them.
-
-## InterestCollection
-
-**concept** InterestCollection [User, Interest]
-
-**purpose** allow users to maintain and organize their interests as they discover new activities. Prevents users from losing track of what they are interested in and missing opportunities to explore related interests.
-
-**principle** when a user creates their profile, they can add their initial interests to their collection. As they discover new interests, they can add them, remove interests they are no longer interested in, and connect related interests to explore different paths within the same field.
-
-**state**
-
-a set of Collections with an owner User and a set of Interests
-
-an Interest containing a name String and a description String
-
-a set of Connections, each connecting two Interests within a user's collection
-
-**actions**
-
-createCollection (user: User): (collection: Collection)
-
-> **where** user does not yet have a collection
-
-> **then** create an empty Collection for user
-
-addInterest (user: User, interest: Interest): (collection: Collection)
-
-> **where** user has a collection and interest is not already in the collection
-
-> **then** add interest to the user's collection and return the updated collection
-
-removeInterest (user: User, interest: Interest): (collection: Collection)
-
-> **where** user has a collection and interest is in the collection
-
-> **then** remove interest and its connections from the user's collection and return the updated collection
-
-connectInterests (user: User, interest1: Interest, interest2: Interest): (connection: Connection)
-
-> **where** user has a collection containing both interests, the interests are different, and no connection between them exists
-
-> **then** create a Connection between interest1 and interest2 and return the new connection
-
-getInterests (user: User): (interests: set Interest)
-
-> **where** user has a collection
-
-> **then** return all interests in the user's collection
-
-getRelatedInterests (user: User, interest: Interest): (interests: set Interest)
-
-> **where** user has a collection containing interest
-
-> **then** return all interests connected to interest in the user's collection
-
-## InterestGeneration
-
-**concept** InterestGeneration [User, Interest, Profile]
-
-**purpose** generate ideas for a user to explore based on their profile, allow users to explore new aspects of their interests that they might never have known about otherwise (ex: a user interested in soccer -> generates ideas like sports photography)
-
-**principle** using the users profile, a LLM generates new interests that a user could potentially be interested in. for example, a user has selected Soccer as one of their interests. initialGeneration returns sports photography and coaching.
-
-**state**
-a set of Users with a set of user-interested Interests
-
-a set of Users with a set of LLM-generated Interests
-
-a set of Users with a set of uninterested Interests
-
-**actions**
-
-initialGeneration (user: User): (interests: set of Interest)
-
-> **where** user does have user-interested Interests and does not have LLM-generated Interests
-
-> **then** use an LLM to generate new, related interests based on user's user-interested Interests. Add these generated Interests to the user's LLM-generated set. Return the LLM-generated interests to the user.
-
-modifyingGeneration (user: User): (interests: set of Interest)
-
-> **where** user does have user-interested Interests and a LLM-generated Interests of size less than 3
-
-> **then** use an LLM to generate new, related interests based on the user's user-interested and user's uninterested, steering towards interests like those in user-interested and away from those in user's uninterested. Add these generated Interests to the user's LLM-generated set. Return the LLM-generated interests to the user.
-
-interested(user: User, interest: Interest)
-
-> **where** user has interest in their set of LLM-generated Interests
-
-> **then** remove interest from user's LLM-generated and add interest to user's user-interested
-
-uninterested(user: User, interest: Interest)
-
-> **where** user has interest in their set of LLM-generated Interests
-
-> **then** remove interest from user's LLM-generated and add interest to user's uninterested
-
-addInitialInterest (user: User, interest: Interest)
-
-> **where** interest is not already in the user's user-interested Interests
-
-> **then** add interest to the user's user-interested Interests
-
-  
-**asides** InterestGeneration focuses on initially taking the interests that the user identifies at profile creation and generating new, related interests and career topics for the user to explore. As the user spends time navigating and exploring these LLM-generated Interests, they can mark each interest as something that they are either interested or uninterested in. With this division of interests, the LLM can generate new interests that they think the user would be excited to explore.  
-
+> **then** return the user's Profile, name, and about without changing them
 
 **note**
 
-`initialGeneration` only runs when this concept already has interests the user wants. It does not read the profile description. Those interests arrive through `addInitialInterest`, which the collection calls when an interest is added there. If that has not happened, there is nothing to generate from.
+Account does not store initial interests. During onboarding, the user selects topics or activities, which are saved through InterestCollection.setPreference. The profile can display those preferences by reading InterestCollection separately.
+
+## InterestCollection
+
+**concept** InterestCollection [User, Topic, Activity]
+
+**purpose** organize broad topics, specific activities, connections between them, and users' expressed preferences so they can discover directions they might enjoy exploring.
+
+**principle** topics represent broad areas such as Music, while activities represent specific directions such as Songwriting. Activities can connect to more than one topic and to other activities. Users explicitly record whether they are interested, curious, or not interested in a topic or activity, and may change those preferences later.
+
+**state**
+
+a set of Topics, each containing:
+- a unique name String
+- a description String
+
+a set of Activities, each containing:
+- a unique name String
+- a description String
+
+a set of Connections, each connecting either:
+- a Topic and an Activity, or
+- two different Activities
+
+a set of Preferences, each containing:
+- an owner User
+- a subject Subject (a Topic or an Activity)
+- a status Status (interested, curious, or notInterested)
+
+Each user has at most one Preference per subject. Connections are undirected and cannot be duplicated.
+
+**actions**
+
+registerTopic (name: String, description: String): (topic: Topic)
+
+> **where** name is not blank and no Topic with that name exists
+
+> **then** create the Topic and return it
+
+registerActivity (name: String, description: String, topics: set Topic): (activity: Activity)
+
+> **where** name is not blank, no Activity with that name exists, topics is not empty, and all supplied Topics exist
+
+> **then** create the Activity, connect it to every supplied Topic, and return it
+
+connectActivities (activity1: Activity, activity2: Activity): (connection: Connection)
+
+> **where** both Activities exist, they are different, and no connection between them exists
+
+> **then** create an undirected Connection and return it
+
+setPreference (user: User, subject: Subject, status: Status): (preference: Preference)
+
+> **where** subject exists and status is interested, curious, or notInterested
+
+> **then** create or update the user's Preference for that subject and return it
+
+getPreferences (user: User): (preferences: set Preference)
+
+> **then** return the user's Preferences, or an empty set if none exist
+
+getTopics (): (topics: set Topic)
+
+> **then** return all registered Topics
+
+getActivities (): (activities: set Activity)
+
+> **then** return all registered Activities
+
+getConnections (): (connections: set Connection)
+
+> **then** return all registered Connections
+
+getRelated (subject: Subject): (related: set Subject)
+
+> **where** subject exists
+
+> **then** return all subjects directly connected to subject
+
+**note**
+
+InterestCollection stores both the shared catalog and each user's explicitly expressed preferences, but does not store stories or whether an activity has been explored. A completed story does not automatically make an activity interesting. For Alpha, trusted application setup registers a small predefined catalog; users cannot register arbitrary catalog entries through the ordinary UI. The graph describes relationships, not prerequisites: unconnected activities remain selectable.
+
+## InterestGeneration
+
+**concept** InterestGeneration [User, Activity, Topic]
+
+**purpose** suggest concrete activities that users may want to explore, including directions related to their interests and unfamiliar alternatives.
+
+**principle** when suggestions are requested, the concept considers the user's preferences and the available catalog and connections. It keeps track of suggestions the user dismisses, but does not maintain a second copy of their preferences. Choosing an activity for a story does not automatically mark it as interesting.
+
+**state**
+a set of Suggestions, each containing:
+- an owner User
+- an Activity
+- a status (pending or dismissed)
+
+Each user has at most one Suggestion per Activity.
+
+**actions**
+
+generateSuggestions (user: User, preferences: set Preference, activities: set Activity, connections: set Connection, startedActivities: set Activity): (suggestions: set Suggestion)
+
+> **where** activities is not empty
+
+> **then** generate suggestions using the supplied preferences, activities, and connections. Exclude previously dismissed Activities and Activities in startedActivities. Replace the user's pending Suggestions with the new set and return them.
+
+getSuggestions (user: User): (suggestions: set Suggestion)
+
+> **then** return all pending Suggestions belonging to user, or an empty set if none exist
+
+dismissSuggestion (user: User, activity: Activity): (suggestion: Suggestion)
+
+> **where** user has a pending Suggestion for activity
+
+> **then** change its status to dismissed and return it
+
+**note**
+
+Preferences are owned by InterestCollection and provided to generateSuggestions when needed. Dismissing a suggestion only changes suggestion state: it does not mean the user dislikes the activity. Users may still browse and select dismissed or unconnected activities. In Alpha, suggestions can be drawn from a small predefined catalog without an LLM. Beta may use an LLM to rank or explain existing catalog activities, without needing to generate new Activity entities.
 
 ## StoryGeneration
 
-**concept** StoryGeneration [User, Interest]
+**concept** StoryGeneration [User, Activity]
 
-**purpose** help users explore an unfamiliar interest through a personalized narrative that connects their choices to concrete activities they can try.
+**purpose** help users explore a specific activity through a personalized, short narrative with questions and a concrete activity to try.
 
-**principle** when a user chooses an interest, they receive the first chapter of a story introducing that interest through a relatable situation. The chapter asks what they would do next. Their answer shapes the following chapter, allowing them to explore different aspects of the interest. The final chapter concludes the story and suggests a related activity to try.
+**principle** when a user chooses an activity, they receive the first chapter of a story about it. Their response to a chapter's question shapes the next chapter. The third chapter concludes the story and suggests a small real-world activity. A user can have at most one Story for an Activity in the MVP.
 
 **state**
 
 a set of Stories, each containing:
-
 - an owner User
-- an Interest
-- a topic String describing the interest
+- an Activity
 - a context String containing personalization information
 - an ordered sequence of Chapters
 
 a set of Chapters, each containing:
-
 - a story Story
 - a position Integer
 - a text String
 - an optional question String
 - an optional answer String
-- an optional activity String
+- an optional suggestedActivity String
 
-Each Story contains between one and three Chapters.
+Each Story contains between one and three Chapters. Each user has at most one Story per Activity.
 
 **actions**
 
-generateStory (user: User, interest: Interest, topic: String, context: String): (story: Story, chapter: Chapter)
+generateStory (user: User, activity: Activity, context: String): (story: Story, chapter: Chapter)
 
-> **where** topic is not blank
+> **where** the user does not already have a Story for activity
 
-> **then** use an LLM to generate the first chapter of a new story about topic, personalized using context. Create a Story belonging to user and associated with interest, topic, and context. Create its first Chapter with position 1, generated text, a question, and no answer or activity. Return the story and chapter.
+> **then** create a Story for the selected Activity, using context to personalize its first Chapter. Give the first Chapter position 1, text, and a question, with no answer or suggestedActivity. Return the Story and Chapter
 
 continueStory (user: User, story: Story, answer: String): (chapter: Chapter)
 
-> **where** story belongs to user, its latest chapter has an unanswered question, answer is not blank, and the story contains fewer than three chapters
+> **where** story belongs to user, answer is not blank, the latest Chapter has an unanswered question, and the Story has fewer than three Chapters
 
-> **then** use an LLM to generate the next chapter using the story’s topic, context, previous chapters, previous answers, and the supplied answer. Record the supplied answer on the previous chapter and append the new Chapter with the next position. If the new chapter has position 2, give it a question and no activity. If it has position 3, conclude the story, give it a concrete activity related to the interest, and give it no question. Return the new chapter.
+> **then** record answer on the latest Chapter and generate the next Chapter using the Activity, context, earlier Chapters, and answers. Chapter 2 has a question; Chapter 3 concludes the Story and names a small suggestedActivity but has no question. Return the new Chapter
 
 getStory (user: User, story: Story): (chapters: sequence Chapter)
 
 > **where** story belongs to user
 
-> **then** return its chapters in position order, including their text, questions, recorded answers, and activities, without changing the story.
+> **then** return all Chapters in order, with their text, questions, answers, and suggested activities
+
+getStories (user: User): (stories: set Story)
+
+> **then** return the user's Stories, including their associated Activities, or an empty set if none exist
 
 **note**
 
-`context` is the about text from the user's profile, not a second copy of the profile. When a model call cannot be used, `generateStory` can return a story we wrote ahead of time for that interest, and the rest of the path still has a chapter to show.
+A Story explores an Activity, not a broad Topic. The context is supplied from Account.about and is not another stored profile. The suggestedActivity in the final Chapter is a small real-world task and must not be confused with the selected Activity entity. Alpha may return prepared Story content instead of calling an LLM; the same actions and chapter structure are used. One Story per Activity is an MVP limitation, not a general rule about exploration.
 
 ## AvatarCustomizing
 
@@ -328,56 +341,52 @@ getEquipped (user: User): (worn: set Worn)
 
 ## ExplorationTracking
 
-**concept** ExplorationTracking [User, Interest, Story]
+**concept** ExplorationTracking [User, Story]
 
-**purpose** keep track of users' previous explorations and their progress. Prevents users from losing track of activities they have explored and allows them to return to previous experiences.
+**purpose** keep a record of stories users have started and completed so they can resume and review their previous explorations.
 
-**principle** when a user starts a story about an interest, an exploration record is created. The user progresses through the story's chapters and marks the story as completed when they finish exploring the activity. The completed exploration remains in their history.
+**principle** creating a Story starts one Exploration. The Exploration remains started until the user explicitly marks that Story completed after reaching its final Chapter. Saving a reflection or finishing an individual Chapter does not complete the Exploration.
 
 **state**
 
 a set of Explorations, each containing:
-
 - an owner User
-- an Interest
 - a Story
 - a status (started or completed)
 
+Each User has at most one Exploration per Story.
+
 **actions**
 
-startExploration (user: User, interest: Interest, story: Story): (exploration: Exploration)
+startExploration (user: User, story: Story): (exploration: Exploration)
 
-> **where** user does not already have an exploration for story
+> **where** the user does not already have an Exploration for story
 
-> **then** create a new Exploration for user with interest, story, and status started, and return the exploration
+> **then** create an Exploration for that Story with status started and return it
 
-completeExploration (user: User, exploration: Exploration): (exploration: Exploration)
+completeExploration (user: User, story: Story): (exploration: Exploration)
 
-> **where** exploration belongs to user and has status started
+> **where** the user has an Exploration for story with status started
 
-> **then** change the exploration's status to completed and return the updated exploration
+> **then** change its status to completed and return it
 
-getExploration (user: User, exploration: Exploration): (exploration: Exploration)
+getExploration (user: User, story: Story): (exploration: Exploration)
 
-> **where** exploration belongs to user
+> **where** the user has an Exploration for story
 
-> **then** return the exploration and its current status
+> **then** return that Exploration and its current status
 
 getExplorationHistory (user: User): (explorations: set Exploration)
 
-> **where** user has at least one exploration
-
-> **then** return all explorations belonging to user
+> **then** return all of the user's Explorations, or an empty set if none exist
 
 getCompletedExplorations (user: User): (explorations: set Exploration)
 
-> **where** user has at least one completed exploration
-
-> **then** return all completed explorations belonging to user
+> **then** return all completed Explorations for the user, or an empty set if none exist
 
 **note**
 
-An exploration represents an entire story, not an individual chapter. Users explicitly mark an exploration as completed after finishing the story. Completing a chapter does not automatically complete the exploration.
+ExplorationTracking tracks Stories only; it does not store the corresponding Activity or a user's opinion about it. StoryGeneration associates each Story with an Activity, and InterestCollection stores preferences. A completed Story is not evidence that the user tried the real-world task in the last Chapter. The Interest Map is a frontend view combining catalog, preferences, and Story completion status, not a separate concept.
 
 ## Reflecting
 
@@ -433,98 +442,144 @@ A journal holds at most one page per chapter, and the page is the user's writing
 
 # Reactions
 
-**Account creation -> Initialize interests**
+### Account created → Create reflection journal
 
 ```
-when Account.createAccount (user, name, about, initialInterests): (profile)
-then InterestCollection.createCollection (user)
+when Account.createAccount (user, name, about): (profile)
+then Reflecting.createJournal (user)
 ```
 
-```
-when InterestCollection.createCollection (user): (collection)
-where Account.getProfile (user): (profile, name, about, initialInterests)
-where interest is in initialInterests
-then InterestCollection.addInterest (user, interest)
-```
+The journal is created when the user's profile is created. Initial interests are managed separately through InterestCollection.
 
-The collection has to exist before an interest can be put in it, so the empty collection is created first. If the user did not name any interests, the collection is still created and the second reaction has nothing to add.
-
-**Interest added → Update InterestGeneration**
+### Initial interest selected → Save preference
 
 ```
-when InterestCollection.addInterest (user, interest): (collection)
-then InterestGeneration.addInitialInterest (user, interest)
+when Requesting.selectInitialInterest (session, subject)
+where Sessioning.current (session): (user)
+then InterestCollection.setPreference (user, subject, interested)
 ```
 
-**Onboarding completed -> Generate suggested activities**
+During onboarding, users select registered Topics or Activities. Their preferences are stored in InterestCollection rather than Account.
+
+### Onboarding completed → Generate suggestions
 
 ```
 when Requesting.finishOnboarding (session)
 where Sessioning.current (session): (user)
-where InterestCollection.getInterests (user) is not empty
-then InterestGeneration.initialGeneration (user)
+where InterestCollection.getPreferences (user): (preferences)
+where InterestCollection.getActivities (): (activities)
+where InterestCollection.getConnections (): (connections)
+where StoryGeneration.getStories (user): (stories)
+where startedActivities are the Activities associated with stories
+where activities is not empty
+then InterestGeneration.generateSuggestions (user, preferences, activities, connections, startedActivities)
 ```
 
-`initialGeneration` only runs when InterestGeneration already has interests the user wants. Those get there when an interest is added to the collection. If that copy has not happened, this reaction does not run.
+Suggestions are generated using the user's preferences, available activities, and connections. Activities for which the user has already started a Story are excluded. Users may still receive suggestions if they selected no initial interests.
 
-**Activity selected -> Generate story**
+### Suggestion dismissed → Record dismissal
 
 ```
-when Requesting.selectActivity (session, interest, topic)
+when Requesting.dismissSuggestion (session, activity)
 where Sessioning.current (session): (user)
-where Account.getProfile (user): (profile, name, about, initialInterests)
-then StoryGeneration.generateStory (user, interest, topic, context: about)
+then InterestGeneration.dismissSuggestion (user, activity)
 ```
 
-`about` is the description saved on the profile. `generateStory` does not take an argument by that name. It takes `context`, so the description we just read is passed in as the context.
+Dismissing a suggestion does not change the user's preferences. The activity remains available through the catalog.
 
-**Story generated -> Start exploration**
+### Activity selected → Generate story
 
 ```
-when StoryGeneration.generateStory (user, interest, topic, context): (story, chapter)
-then ExplorationTracking.startExploration (user, interest, story)
+when Requesting.selectActivity (session, activity)
+where Sessioning.current (session): (user)
+where Account.getProfile (user): (profile, name, about)
+where InterestCollection.getActivities (): (activities)
+where activity is in activities
+then StoryGeneration.generateStory (user, activity, about)
 ```
 
-The story that comes back is what opens the exploration. The chapter that comes back with it is not an exploration, and finishing a chapter does not finish this record.
+The user can select any registered Activity, including one that was not recommended. StoryGeneration enforces the MVP restriction of one Story per user and Activity. If a Story already exists, the UI should open it instead of generating another.
 
-**Reflection submitted -> Save reflection**
+### Story generated → Start exploration
+
+```
+when StoryGeneration.generateStory (user, activity, context): (story, chapter)
+then ExplorationTracking.startExploration (user, story)
+```
+
+An Exploration is created when the Story starts. Each Exploration tracks the entire Story rather than individual Chapters.
+
+### Reflection submitted → Save reflection
 
 ```
 when Requesting.submitReflection (session, story, chapter, text)
 where Sessioning.current (session): (user)
 where StoryGeneration.getStory (user, story): (chapters)
 where chapter is in chapters
+where chapter.question is empty or text is not blank
 then Reflecting.write (user, story, chapter, text)
 ```
 
-**Reflection saved -> Generate next chapter**
+Responses to Chapters with questions must not be blank. The final Chapter may have an empty reflection because it does not require an answer to continue the Story.
+
+### Reflection saved → Generate next chapter
 
 ```
 when Reflecting.write (user, story, chapter, text): (page)
 where StoryGeneration.getStory (user, story): (chapters)
 where chapter is the latest chapter in chapters
 where chapter.question is not empty
+where text is not blank
 where size(chapters) < 3
 then StoryGeneration.continueStory (user, story, text)
 ```
 
-The text the user just saved is the answer `continueStory` uses. This only happens when that chapter is the latest one, it still asks a question, and the story has fewer than three chapters.
+The saved reflection is used as the answer to the Chapter's question, shaping the next Chapter. The final Chapter does not trigger further generation. Editing an existing reflection does not regenerate previous Chapters.
 
-**Story marked complete → Complete exploration**
+### Story marked complete → Complete exploration
 
 ```
 when Requesting.completeStory (session, story)
 where Sessioning.current (session): (user)
-where ExplorationTracking.getExplorationHistory (user): (explorations)
-where exploration is in explorations and exploration.story = story
-then ExplorationTracking.completeExploration (user, exploration)
+where StoryGeneration.getStory (user, story): (chapters)
+where size(chapters) = 3
+then ExplorationTracking.completeExploration (user, story)
 ```
 
-The user marks the story complete, and that is what completes the exploration. Saving a reflection does not.
+The user explicitly marks the Story completed after reaching the final Chapter. Completing individual Chapters or saving reflections does not automatically complete the Exploration.
 
-**Account created → Create reflection journal**
+### Interest preference updated → Save preference
 
 ```
-when Account.createAccount (user, name, about, initialInterests): (profile)
-then Reflecting.createJournal (user)
+when Requesting.setInterestPreference (session, subject, status)
+where Sessioning.current (session): (user)
+then InterestCollection.setPreference (user, subject, status)
 ```
+
+Users may mark a Topic or Activity as interested, curious, or notInterested. Story completion does not automatically change their preferences.
+
+### New suggestions requested → Refresh suggestions
+
+```
+when Requesting.refreshSuggestions (session)
+where Sessioning.current (session): (user)
+where InterestCollection.getPreferences (user): (preferences)
+where InterestCollection.getActivities (): (activities)
+where InterestCollection.getConnections (): (connections)
+where StoryGeneration.getStories (user): (stories)
+where startedActivities are the Activities associated with stories
+where activities is not empty
+then InterestGeneration.generateSuggestions (user, preferences, activities, connections, startedActivities)
+```
+
+The application retrieves the latest preferences and previously started Stories before generating new suggestions. This prevents suggesting Activities that users have already started exploring.
+
+### Note on Requesting and synchronization
+
+`Requesting` represents user-facing requests handled by the application boundary. These requests must be implemented in assembly or defined through a Requesting interface.
+
+`startedActivities` is derived from the Activities associated with the user's Stories returned by `StoryGeneration.getStories`. It is not stored separately by InterestGeneration.
+
+The application's trusted setup code registers the initial Topics, Activities, and Connections. Users cannot modify the shared catalog through ordinary requests.
+
+The Interest Map is a frontend visualization of InterestCollection, StoryGeneration, and ExplorationTracking. No separate InterestMap concept or synchronization reaction is needed.
