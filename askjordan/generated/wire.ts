@@ -3,6 +3,7 @@
 import type { applicationConceptSet as ApplicationConceptSet } from "../src/concepts.ts";
 
 type AtPath<T, P extends readonly string[]> = P extends readonly [infer H extends string, ...infer R extends string[]] ? H extends keyof T ? AtPath<T[H], R> : H extends `${number}` ? T extends readonly (infer Item)[] ? AtPath<Item, R> : never : never : T;
+type QueryRow<T> = T extends readonly (infer Row)[] ? Row : T;
 type Jsonify<T> = T extends Date ? string : T extends null | boolean | number | string ? T : T extends (...args: never[]) => unknown ? never : T extends readonly (infer Item)[] ? Jsonify<Item>[] : T extends object ? { [K in keyof T]: Jsonify<T[K]> } : never;
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -51,5 +52,100 @@ export type AskJordanWire = {
       "ended": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Sessioning"]["end"]>>, ["ended"]>>;
     };
     error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/explorations/history": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "explorations": {
+        "exploration": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["ExplorationTracking"]["_history"]>>>, ["exploration"]>>;
+        "status": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["ExplorationTracking"]["_history"]>>>, ["status"]>>;
+        "story": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["ExplorationTracking"]["_history"]>>>, ["story"]>>;
+      }[];
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/interests/activities": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "activities": {
+        "activity": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_activities"]>>>, ["activity"]>>;
+        "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_activities"]>>>, ["description"]>>;
+        "name": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_activities"]>>>, ["name"]>>;
+      }[];
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/interests/preference": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "status": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["setPreference"]>[0], ["status"]>>;
+      "subject": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["setPreference"]>[0], ["subject"]>>;
+    };
+    output: {
+      "preference": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["setPreference"]>>, ["preference"]>>;
+    };
+    error: { error: AppWideError | "CATALOG_ENTRY_NOT_FOUND" | "INVALID_INPUT" | "INVALID_PREFERENCE" | "UNKNOWN_SESSION" };
+  };
+  "/interests/preferences": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "preferences": {
+        "preference": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_preferences"]>>>, ["preference"]>>;
+        "status": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_preferences"]>>>, ["status"]>>;
+        "subject": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_preferences"]>>>, ["subject"]>>;
+      }[];
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/interests/topics": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "topics": {
+        "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_topics"]>>>, ["description"]>>;
+        "name": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_topics"]>>>, ["name"]>>;
+        "topic": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["InterestCollection"]["_topics"]>>>, ["topic"]>>;
+      }[];
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/stories/continue": {
+    input: {
+      "answer": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["answer"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["story"]>>;
+    };
+    output: {
+      "chapter": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>>, ["chapter"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_STORY_ANSWER" | "STORY_CANNOT_CONTINUE" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
+  };
+  "/stories/get": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getStory"]>[0], ["story"]>>;
+    };
+    output: {
+      "chapters": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getStory"]>>, ["chapters"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
+  };
+  "/stories/start": {
+    input: {
+      "activity": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["generateStory"]>[0], ["activity"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "chapter": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["generateStory"]>>, ["chapter"]>>;
+      "story": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["generateStory"]>>, ["story"]>>;
+    };
+    error: { error: AppWideError | "EXPLORATION_ALREADY_STARTED" | "INVALID_INPUT" | "NO_PROFILE" | "STORY_ALREADY_EXISTS" | "UNKNOWN_SESSION" };
   };
 };

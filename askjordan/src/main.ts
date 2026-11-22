@@ -1,25 +1,54 @@
+
 import { createGateway } from "@mit-sdg/sync-engine/boundary";
 import { createHttpHandler } from "@mit-sdg/sync-engine-http/handler";
+
 import { assembleApplication } from "./assembly.ts";
+import { seedCatalog } from "./catalog.ts";
 import { db } from "./db.ts";
 import { policy } from "./http.ts";
 
 const application = assembleApplication();
-const api = createHttpHandler({ application, gateway: createGateway({ application }), policy });
+
+// Populate topics and activities before accepting requests.
+await seedCatalog(application);
+
+const api = createHttpHandler({
+  application,
+  gateway: createGateway({ application }),
+  policy,
+});
 
 const server = Bun.serve({
   hostname: process.env.HOST ?? "127.0.0.1",
   port: Number(process.env.PORT ?? 3000),
+
   routes: {
     "/api/*": api,
+
     "/health": async () => {
       try {
-        await db.command({ ping: 1 }, { timeoutMS: 3000 });
-        return Response.json({ status: "ok" }, { headers: { "Cache-Control": "no-store" } });
+        await db.command(
+          { ping: 1 },
+          { timeoutMS: 3000 },
+        );
+
+        return Response.json(
+          { status: "ok" },
+          {
+            headers: {
+              "Cache-Control": "no-store",
+            },
+          },
+        );
       } catch {
         return Response.json(
           { status: "unavailable" },
-          { status: 503, headers: { "Cache-Control": "no-store" } },
+          {
+            status: 503,
+            headers: {
+              "Cache-Control": "no-store",
+            },
+          },
         );
       }
     },

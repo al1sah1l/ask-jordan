@@ -4,6 +4,7 @@ import type { Db } from "mongodb";
 
 import { composition as sessions } from "./compositions/Sessions.ts";
 import { composition as explorationComposition } from "./compositions/ExplorationFlow.ts";
+import { composition as interestApi } from "./compositions/InterestApi.ts";
 
 import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
@@ -29,24 +30,28 @@ export type AskJordanOverrides = Partial<{
 }>;
 
 /**
- * Supports MongoDB-backed production instances
- * and mock concept instances for integration tests.
+ * Supports production MongoDB instances, test databases,
+ * and mock concept implementations.
  */
 export function assembleApplication(
   databaseOrOverrides: Db | AskJordanOverrides = db,
   clock: () => Date = () => new Date(),
+  testOverrides: AskJordanOverrides = {},
 ) {
   const isDatabase =
     "collection" in databaseOrOverrides &&
     typeof databaseOrOverrides.collection === "function";
 
   const database = isDatabase
-    ? databaseOrOverrides as Db
+    ? (databaseOrOverrides as Db)
     : db;
 
-  const overrides: AskJordanOverrides = isDatabase
-    ? {}
-    : databaseOrOverrides as AskJordanOverrides;
+  const overrides: AskJordanOverrides = {
+    ...(isDatabase
+      ? {}
+      : (databaseOrOverrides as AskJordanOverrides)),
+    ...testOverrides,
+  };
 
   return assemble({
     conceptSet: applicationConceptSet,
@@ -68,6 +73,7 @@ export function assembleApplication(
     composition: {
       Sessions: sessions,
       AskJordan: explorationComposition,
+      InterestApi: interestApi,
     },
   });
 }
