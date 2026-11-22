@@ -1,5 +1,6 @@
 import { assemble } from "@mit-sdg/sync-engine/assembly";
 import type { Db } from "mongodb";
+import { composition as sessions } from "./compositions/Sessions.ts";
 import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
 import { AvatarCustomizingConcept } from "./concepts/AvatarCustomizing.ts";
@@ -25,6 +26,8 @@ export function assembleApplication(database: Db = db, clock: () => Date = () =>
       InterestGeneration: new InterestGenerationConcept(),
       StoryGeneration: new StoryGenerationConcept(),
     },
-    composition: {},
+    composition: {
+      Sessions: sessions,
+    },
   });
 }
