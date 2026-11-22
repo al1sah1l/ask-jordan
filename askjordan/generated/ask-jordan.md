@@ -184,6 +184,67 @@ Defined in [StoryGeneration](../design/concepts/StoryGeneration.md), line 2.
   - `Activity` is `InterestCollection.Activity` — [Ask Jordan application types](../design/types.md), line 30.
   - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 29.
 
+## Formers
+
+_Formers name result shapes evaluated when asked. The source former owns_
+_the authored explanation; this section records the generated shape._
+
+### catalog activities
+
+Authored path: `InterestApi.InterestBrowsing.ActivitiesList`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 21.
+
+```former
+Former "catalog activities" — inputs (); bindings (activity, name, description); promises exactly one record — forms:
+  each InterestCollection._activities () has (activity, description, name)
+    form a record of
+      activity
+      description
+      name
+```
+
+### catalog topics
+
+Authored path: `InterestApi.InterestBrowsing.TopicsList`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 17.
+
+```former
+Former "catalog topics" — inputs (); bindings (topic, name, description); promises exactly one record — forms:
+  each InterestCollection._topics () has (description, name, topic)
+    form a record of
+      description
+      name
+      topic
+```
+
+### explorations for a user
+
+Authored path: `InterestApi.StoryExploring.ExplorationHistory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 63.
+
+```former
+Former "explorations for a user" — inputs (user); bindings (exploration, story, status); promises exactly one record — forms:
+  each ExplorationTracking._history (user) has (exploration, status, story)
+    form a record of
+      exploration
+      status
+      story
+```
+
+### preferences for a user
+
+Authored path: `InterestApi.InterestBrowsing.PreferencesList`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 29.
+
+```former
+Former "preferences for a user" — inputs (user); bindings (preference, subject, status); promises exactly one record — forms:
+  each InterestCollection._preferences (user) has (preference, status, subject)
+    form a record of
+      preference
+      status
+      subject
+```
+
 ## Reactions
 
 ### AskJordan.StoryExploration.StoryCreatedStartsExploration
@@ -215,6 +276,282 @@ where
   earlier, RequestBoundary.request (requestId)
 then
   RequestBoundary.respond (error: message, requestId)
+```
+
+### InterestApi.InterestBrowsing.GetActivities
+
+Authored path: `InterestApi.InterestBrowsing.GetActivities`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 20.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 33.
+
+```reaction
+when RequestBoundary.request (path: "/interests/activities", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.InterestBrowsing.GetActivities#2
+
+Authored path: `InterestApi.InterestBrowsing.GetActivities`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 20.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 33.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.InterestBrowsing.GetActivities
+where
+  earlier, RequestBoundary.request (path: "/interests/activities", requestId, session)
+then
+  RequestBoundary.respond (activities: former "catalog activities", requestId)
+```
+
+### InterestApi.InterestBrowsing.GetPreferences
+
+Authored path: `InterestApi.InterestBrowsing.GetPreferences`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 28.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 35.
+
+```reaction
+when RequestBoundary.request (path: "/interests/preferences", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.InterestBrowsing.GetPreferences#2
+
+Authored path: `InterestApi.InterestBrowsing.GetPreferences`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 28.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 35.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.InterestBrowsing.GetPreferences
+where
+  earlier, RequestBoundary.request (path: "/interests/preferences", requestId, session)
+then
+  RequestBoundary.respond (preferences: former "preferences for a user" with (user), requestId)
+```
+
+### InterestApi.InterestBrowsing.GetTopics
+
+Authored path: `InterestApi.InterestBrowsing.GetTopics`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 16.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 32.
+
+```reaction
+when RequestBoundary.request (path: "/interests/topics", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.InterestBrowsing.GetTopics#2
+
+Authored path: `InterestApi.InterestBrowsing.GetTopics`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 16.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 32.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.InterestBrowsing.GetTopics
+where
+  earlier, RequestBoundary.request (path: "/interests/topics", requestId, session)
+then
+  RequestBoundary.respond (requestId, topics: former "catalog topics")
+```
+
+### InterestApi.InterestBrowsing.SetPreference
+
+Authored path: `InterestApi.InterestBrowsing.SetPreference`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 24.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 34.
+
+```reaction
+when RequestBoundary.request (path: "/interests/preference", requestId, session, status, subject)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.InterestBrowsing.SetPreference#2
+
+Authored path: `InterestApi.InterestBrowsing.SetPreference`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 24.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 34.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.InterestBrowsing.SetPreference
+where
+  earlier, RequestBoundary.request (path: "/interests/preference", requestId, session, status, subject)
+then
+  InterestCollection.setPreference (status, subject, user)
+```
+
+### InterestApi.InterestBrowsing.SetPreference#3
+
+Authored path: `InterestApi.InterestBrowsing.SetPreference`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 24.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 34.
+
+```reaction
+when InterestCollection.setPreference (status, subject, user, preference), asked by InterestApi.InterestBrowsing.SetPreference#2
+where
+  earlier, RequestBoundary.request (path: "/interests/preference", requestId, session, status, subject)
+then
+  RequestBoundary.respond (preference, requestId)
+```
+
+### InterestApi.StoryExploring.ContinueStory
+
+Authored path: `InterestApi.StoryExploring.ContinueStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 71.
+
+```reaction
+when RequestBoundary.request (answer, path: "/stories/continue", requestId, session, story)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.StoryExploring.ContinueStory#2
+
+Authored path: `InterestApi.StoryExploring.ContinueStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 71.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.StoryExploring.ContinueStory
+where
+  earlier, RequestBoundary.request (answer, path: "/stories/continue", requestId, session, story)
+then
+  StoryGeneration.continueStory (answer, story, user)
+```
+
+### InterestApi.StoryExploring.ContinueStory#3
+
+Authored path: `InterestApi.StoryExploring.ContinueStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 71.
+
+```reaction
+when StoryGeneration.continueStory (answer, story, user, chapter), asked by InterestApi.StoryExploring.ContinueStory#2
+where
+  earlier, RequestBoundary.request (answer, path: "/stories/continue", requestId, session, story)
+then
+  RequestBoundary.respond (chapter, requestId)
+```
+
+### InterestApi.StoryExploring.GetExplorationHistory
+
+Authored path: `InterestApi.StoryExploring.GetExplorationHistory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 62.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 72.
+
+```reaction
+when RequestBoundary.request (path: "/explorations/history", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.StoryExploring.GetExplorationHistory#2
+
+Authored path: `InterestApi.StoryExploring.GetExplorationHistory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 62.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 72.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.StoryExploring.GetExplorationHistory
+where
+  earlier, RequestBoundary.request (path: "/explorations/history", requestId, session)
+then
+  RequestBoundary.respond (explorations: former "explorations for a user" with (user), requestId)
+```
+
+### InterestApi.StoryExploring.GetStory
+
+Authored path: `InterestApi.StoryExploring.GetStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 70.
+
+```reaction
+when RequestBoundary.request (path: "/stories/get", requestId, session, story)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.StoryExploring.GetStory#2
+
+Authored path: `InterestApi.StoryExploring.GetStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 70.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.StoryExploring.GetStory
+where
+  earlier, RequestBoundary.request (path: "/stories/get", requestId, session, story)
+then
+  StoryGeneration.getStory (story, user)
+```
+
+### InterestApi.StoryExploring.GetStory#3
+
+Authored path: `InterestApi.StoryExploring.GetStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 70.
+
+```reaction
+when StoryGeneration.getStory (story, user, chapters), asked by InterestApi.StoryExploring.GetStory#2
+where
+  earlier, RequestBoundary.request (path: "/stories/get", requestId, session, story)
+then
+  RequestBoundary.respond (chapters, requestId)
+```
+
+### InterestApi.StoryExploring.StartStory
+
+Authored path: `InterestApi.StoryExploring.StartStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 69.
+
+```reaction
+when RequestBoundary.request (activity, path: "/stories/start", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### InterestApi.StoryExploring.StartStory#2
+
+Authored path: `InterestApi.StoryExploring.StartStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 69.
+
+```reaction
+when Sessioning.current (session, user), asked by InterestApi.StoryExploring.StartStory
+then
+  Account.getProfile (user)
+```
+
+### InterestApi.StoryExploring.StartStory#3
+
+Authored path: `InterestApi.StoryExploring.StartStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 69.
+
+```reaction
+when Account.getProfile (user, about), asked by InterestApi.StoryExploring.StartStory#2
+where
+  earlier, RequestBoundary.request (activity, path: "/stories/start", requestId, session)
+then
+  StoryGeneration.generateStory (activity, context: about, user)
+```
+
+### InterestApi.StoryExploring.StartStory#4
+
+Authored path: `InterestApi.StoryExploring.StartStory`.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 69.
+
+```reaction
+when StoryGeneration.generateStory (activity, context: about, user, chapter, story), asked by InterestApi.StoryExploring.StartStory#3
+where
+  earlier, RequestBoundary.request (activity, path: "/stories/start", requestId, session)
+then
+  RequestBoundary.respond (chapter, requestId, story)
 ```
 
 ### Sessions.CurrentAccount.CurrentUser
@@ -356,3 +693,11 @@ not listed here have no explicit input contract.
 - `/auth/register` — requires `username`, `password`
 - `/auth/sign-in` — requires `username`, `password`
 - `/auth/sign-out` — requires `session`
+- `/explorations/history` — requires `session`
+- `/interests/activities` — requires `session`
+- `/interests/preference` — requires `session`, `subject`, `status`
+- `/interests/preferences` — requires `session`
+- `/interests/topics` — requires `session`
+- `/stories/continue` — requires `session`, `story`, `answer`
+- `/stories/get` — requires `session`, `story`
+- `/stories/start` — requires `session`, `activity`
