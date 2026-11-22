@@ -2,6 +2,7 @@
 import { assemble } from "@mit-sdg/sync-engine/assembly";
 import type { Db } from "mongodb";
 
+import { composition as accounts } from "./compositions/Accounts.ts";
 import { composition as sessions } from "./compositions/Sessions.ts";
 import { composition as explorationComposition } from "./compositions/ExplorationFlow.ts";
 import { composition as interestApi } from "./compositions/InterestApi.ts";
@@ -72,6 +73,7 @@ export function assembleApplication(
 
     composition: {
       Sessions: sessions,
+      Accounts: accounts,
       AskJordan: explorationComposition,
       InterestApi: interestApi,
     },
