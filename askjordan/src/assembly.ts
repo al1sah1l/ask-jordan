@@ -28,6 +28,7 @@ export function assembleApplication(database: Db = db, clock: () => Date = () =>
     },
     composition: {
       Sessions: sessions,
+      AskJordan: explorationComposition,
     },
   });
 }
