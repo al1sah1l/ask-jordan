@@ -49,9 +49,9 @@ export class AvatarCustomizingConcept {
     const held = await this.holdings.findOne({ _id: `${user}:${item}` });
     if (!held) throw new NotHolding("That item has not been granted.");
     await this.worn.deleteMany({ user, item });
-    await this.worn.replaceOne(
+    await this.worn.updateOne(
       { _id: `${user}:${wearing}` },
-      { _id: `${user}:${wearing}`, user, slot: wearing, item },
+      { $set: { user, slot: wearing, item } },
       { upsert: true },
     );
     return { user, slot: wearing, item };

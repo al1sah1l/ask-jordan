@@ -1,8 +1,7 @@
 
 import { describe, expect, test } from "bun:test";
-import { assemble } from "@mit-sdg/sync-engine/assembly";
 
-import { applicationConceptSet } from "../src/concepts.ts";
+import { assembleApplication } from "../src/assembly.ts";
 import { StoryGenerationConcept } from "../src/concepts/StoryGeneration.ts";
 import { InterestGenerationConcept } from "../src/concepts/InterestGeneration.ts";
 
@@ -46,22 +45,16 @@ class MockInterestGenerator implements InterestGenerator {
 }
 
 function createTestApplication() {
-  return assemble({
-    conceptSet: applicationConceptSet,
-    instances: {
-      ...applicationConceptSet.implementations(),
+  return assembleApplication({
+    StoryGeneration: new StoryGenerationConcept(
+      () => crypto.randomUUID(),
+      new MockStoryGenerator(),
+    ),
 
-      StoryGeneration: new StoryGenerationConcept(
-        () => crypto.randomUUID(),
-        new MockStoryGenerator(),
-      ),
-
-      InterestGeneration: new InterestGenerationConcept(
-        () => crypto.randomUUID(),
-        new MockInterestGenerator(),
-      ),
-    },
-    composition: {},
+    InterestGeneration: new InterestGenerationConcept(
+      () => crypto.randomUUID(),
+      new MockInterestGenerator(),
+    ),
   });
 }
 

@@ -8,6 +8,65 @@ _specifications and composition source, then regenerate this file._
 
 ## Concepts
 
+### Account
+
+Defined in [Account](../design/concepts/Account.md), line 1.
+
+#### Actions
+
+- `createAccount(user: User, name: String, about: String) : returns (profile: Profile)`
+  - Refuses `BLANK_NAME`: A display name is required.
+  - Refuses `PROFILE_EXISTS`: That user already has a profile.
+- `updateProfile(user: User, name: String, about: String) : returns (profile: Profile)`
+  - Refuses `NO_PROFILE`: That user has no profile.
+  - Refuses `BLANK_NAME`: A display name is required.
+- `getProfile(user: User) : returns (profile: Profile, name: String, about: String)`
+  - Refuses `NO_PROFILE`: That user has no profile.
+
+#### Instances
+
+- `Account` — instance of `Account` — [Ask Jordan application types](../design/types.md), line 11.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 12.
+
+### Authenticating
+
+Defined in [Authenticating](../design/concepts/Authenticating.md), line 1.
+
+#### Actions
+
+- `register(username: String, password: String) : returns (account: Account)`
+  - Refuses `INVALID_USERNAME`: A username must contain 3 to 32 letters, numbers, underscores, or hyphens.
+  - Refuses `WEAK_PASSWORD`: A password must contain 8 to 128 characters.
+  - Refuses `USERNAME_TAKEN`: That username is already registered.
+- `authenticate(username: String, password: String) : returns (account: Account)`
+  - Refuses `INVALID_CREDENTIALS`: The username or password is incorrect.
+
+#### Instances
+
+- `Authenticating` — instance of `Authenticating` — [Ask Jordan application types](../design/types.md), line 6.
+
+### AvatarCustomizing
+
+Defined in [AvatarCustomizing](../design/concepts/AvatarCustomizing.md), line 1.
+
+#### Actions
+
+- `grant(user: User, item: Item) : returns (user: User, item: Item)`
+  - Refuses `ALREADY_HOLDS`: That item has already been granted.
+- `equip(user: User, item: Item, slot: Slot) : returns (user: User, slot: Slot, item: Item)`
+  - Refuses `INVALID_SLOT`: An item can be worn only on the head or the body.
+  - Refuses `NOT_HOLDING`: That item has not been granted.
+- `clear(user: User, slot: Slot) : returns (user: User, slot: Slot)`
+  - Refuses `INVALID_SLOT`: An item can be worn only on the head or the body.
+  - Refuses `NOT_WEARING`: Nothing is worn in that slot.
+- `getEquipped(user: User) : returns (worn: WornSet)`
+  - Refuses `NO_HOLDINGS`: Nothing has been granted, so there is nothing to wear.
+
+#### Instances
+
+- `AvatarCustomizing` — instance of `AvatarCustomizing` — [Ask Jordan application types](../design/types.md), line 14.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 15.
+
 ### ExplorationTracking
 
 Defined in [ExplorationTracking](../design/concepts/ExplorationTracking.md), line 2.
@@ -27,9 +86,9 @@ Defined in [ExplorationTracking](../design/concepts/ExplorationTracking.md), lin
 
 #### Instances
 
-- `ExplorationTracking` — instance of `ExplorationTracking` — [Ask Jordan Application Types](../design/types.md), line 16.
-  - `Story` is `StoryGeneration.Story` — [Ask Jordan Application Types](../design/types.md), line 18.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 17.
+- `ExplorationTracking` — instance of `ExplorationTracking` — [Ask Jordan application types](../design/types.md), line 20.
+  - `Story` is `StoryGeneration.Story` — [Ask Jordan application types](../design/types.md), line 22.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 21.
 
 ### InterestCollection
 
@@ -62,8 +121,8 @@ Defined in [InterestCollection](../design/concepts/InterestCollection.md), line 
 
 #### Instances
 
-- `InterestCollection` — instance of `InterestCollection` — [Ask Jordan Application Types](../design/types.md), line 13.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 14.
+- `InterestCollection` — instance of `InterestCollection` — [Ask Jordan application types](../design/types.md), line 17.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 18.
 
 ### InterestGeneration
 
@@ -82,9 +141,26 @@ Defined in [InterestGeneration](../design/concepts/InterestGeneration.md), line 
 
 #### Instances
 
-- `InterestGeneration` — instance of `InterestGeneration` — [Ask Jordan Application Types](../design/types.md), line 20.
-  - `Activity` is `InterestCollection.Activity` — [Ask Jordan Application Types](../design/types.md), line 22.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 21.
+- `InterestGeneration` — instance of `InterestGeneration` — [Ask Jordan application types](../design/types.md), line 24.
+  - `Activity` is `InterestCollection.Activity` — [Ask Jordan application types](../design/types.md), line 26.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 25.
+
+### Sessioning
+
+Defined in [Sessioning](../design/concepts/Sessioning.md), line 1.
+
+#### Actions
+
+- `start(user: User) : returns (session: Session, expiresAt: DateTime)`
+- `current(session: Session) : returns (user: User)`
+  - Refuses `UNKNOWN_SESSION`: You are not signed in, or your session has ended.
+- `end(session: Session) : returns (ended: Flag)`
+  - Refuses `UNKNOWN_SESSION`: You are not signed in, or your session has ended.
+
+#### Instances
+
+- `Sessioning` — instance of `Sessioning` — [Ask Jordan application types](../design/types.md), line 8.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 9.
 
 ### StoryGeneration
 
@@ -104,15 +180,9 @@ Defined in [StoryGeneration](../design/concepts/StoryGeneration.md), line 2.
 
 #### Instances
 
-- `StoryGeneration` — instance of `StoryGeneration` — [Ask Jordan Application Types](../design/types.md), line 24.
-  - `Activity` is `InterestCollection.Activity` — [Ask Jordan Application Types](../design/types.md), line 26.
-  - `User` is `User` — [Ask Jordan Application Types](../design/types.md), line 25.
-
-## Application types
-
-Concrete types:
-
-- `User` — [Ask Jordan Application Types](../design/types.md), line 8.
+- `StoryGeneration` — instance of `StoryGeneration` — [Ask Jordan application types](../design/types.md), line 28.
+  - `Activity` is `InterestCollection.Activity` — [Ask Jordan application types](../design/types.md), line 30.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 29.
 
 ## Reactions
 
@@ -147,3 +217,142 @@ then
   RequestBoundary.respond (error: message, requestId)
 ```
 
+### Sessions.CurrentAccount.CurrentUser
+
+Authored path: `Sessions.CurrentAccount.CurrentUser`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 17.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 21.
+
+```reaction
+when RequestBoundary.request (path: "/auth/current", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Sessions.CurrentAccount.CurrentUser#2
+
+Authored path: `Sessions.CurrentAccount.CurrentUser`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 17.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 21.
+
+```reaction
+when Sessioning.current (session, user: account), asked by Sessions.CurrentAccount.CurrentUser
+where
+  earlier, RequestBoundary.request (path: "/auth/current", requestId, session)
+then
+  RequestBoundary.respond (account, requestId)
+```
+
+### Sessions.EnteringApplication.Register
+
+Authored path: `Sessions.EnteringApplication.Register`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 7.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+
+```reaction
+when RequestBoundary.request (password, path: "/auth/register", requestId, username)
+then
+  Authenticating.register (password, username)
+```
+
+### Sessions.EnteringApplication.Register#2
+
+Authored path: `Sessions.EnteringApplication.Register`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 7.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+
+```reaction
+when Authenticating.register (password, username, account), asked by Sessions.EnteringApplication.Register
+then
+  Sessioning.start (user: account)
+```
+
+### Sessions.EnteringApplication.Register#3
+
+Authored path: `Sessions.EnteringApplication.Register`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 7.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+
+```reaction
+when Sessioning.start (user: account, expiresAt, session), asked by Sessions.EnteringApplication.Register#2
+where
+  earlier, RequestBoundary.request (password, path: "/auth/register", requestId, username)
+then
+  RequestBoundary.respond (account, expiresAt, requestId, session)
+```
+
+### Sessions.EnteringApplication.SignIn
+
+Authored path: `Sessions.EnteringApplication.SignIn`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 8.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+
+```reaction
+when RequestBoundary.request (password, path: "/auth/sign-in", requestId, username)
+then
+  Authenticating.authenticate (password, username)
+```
+
+### Sessions.EnteringApplication.SignIn#2
+
+Authored path: `Sessions.EnteringApplication.SignIn`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 8.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+
+```reaction
+when Authenticating.authenticate (password, username, account), asked by Sessions.EnteringApplication.SignIn
+then
+  Sessioning.start (user: account)
+```
+
+### Sessions.EnteringApplication.SignIn#3
+
+Authored path: `Sessions.EnteringApplication.SignIn`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 8.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+
+```reaction
+when Sessioning.start (user: account, expiresAt, session), asked by Sessions.EnteringApplication.SignIn#2
+where
+  earlier, RequestBoundary.request (password, path: "/auth/sign-in", requestId, username)
+then
+  RequestBoundary.respond (account, expiresAt, requestId, session)
+```
+
+### Sessions.LeavingApplication.SignOut
+
+Authored path: `Sessions.LeavingApplication.SignOut`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 24.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 28.
+
+```reaction
+when RequestBoundary.request (path: "/auth/sign-out", requestId, session)
+then
+  Sessioning.end (session)
+```
+
+### Sessions.LeavingApplication.SignOut#2
+
+Authored path: `Sessions.LeavingApplication.SignOut`.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 24.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 28.
+
+```reaction
+when Sessioning.end (session, ended), asked by Sessions.LeavingApplication.SignOut
+where
+  earlier, RequestBoundary.request (path: "/auth/sign-out", requestId, session)
+then
+  RequestBoundary.respond (ended, requestId)
+```
+
+## Endpoint input contracts
+
+Before recording an action ask, the boundary rejects a body that is not an
+object or lacks a required key. The response uses `INVALID_INPUT` and names
+the path or missing key. A declared default fills an absent key. Endpoints
+not listed here have no explicit input contract.
+
+- `/auth/current` — requires `session`
+- `/auth/register` — requires `username`, `password`
+- `/auth/sign-in` — requires `username`, `password`
+- `/auth/sign-out` — requires `session`
