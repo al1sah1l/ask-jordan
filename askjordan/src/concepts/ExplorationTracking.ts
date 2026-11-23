@@ -1,4 +1,9 @@
 
+import {
+  EXPORT_STATE,
+  RESTORE_STATE,
+} from "../persistence-symbols.ts";
+
 export class ExplorationAlreadyStarted extends Error {}
 export class ExplorationNotStarted extends Error {}
 
@@ -9,11 +14,17 @@ export type ExplorationRow = {
   status: "started" | "completed";
 };
 
+export type ExplorationTrackingState = {
+  explorations: ExplorationRow[];
+};
+
 export class ExplorationTrackingConcept {
-  private readonly explorations = new Map<string, ExplorationRow>();
+  private readonly explorations =
+    new Map<string, ExplorationRow>();
 
   constructor(
-    private readonly freshID: () => string = () => crypto.randomUUID(),
+    private readonly freshID: () => string =
+      () => crypto.randomUUID(),
   ) {}
 
   startExploration({
@@ -81,11 +92,11 @@ export class ExplorationTrackingConcept {
     user: string;
   }): ExplorationRow[] {
     return [...this.explorations.values()]
-      .filter((exploration) => exploration.user === user)
+      .filter((item) => item.user === user)
       .sort((a, b) =>
         a.exploration.localeCompare(b.exploration),
       )
-      .map((exploration) => ({ ...exploration }));
+      .map((item) => ({ ...item }));
   }
 
   _completed({
@@ -95,14 +106,31 @@ export class ExplorationTrackingConcept {
   }): ExplorationRow[] {
     return [...this.explorations.values()]
       .filter(
-        (exploration) =>
-          exploration.user === user &&
-          exploration.status === "completed",
+        (item) =>
+          item.user === user &&
+          item.status === "completed",
       )
       .sort((a, b) =>
         a.exploration.localeCompare(b.exploration),
       )
-      .map((exploration) => ({ ...exploration }));
+      .map((item) => ({ ...item }));
+  }
+
+  [EXPORT_STATE](): ExplorationTrackingState {
+    return {
+      explorations: [...this.explorations.values()]
+        .map((item) => ({ ...item })),
+    };
+  }
+
+  [RESTORE_STATE](state: ExplorationTrackingState): void {
+    this.explorations.clear();
+
+    for (const row of state.explorations) {
+      this.explorations.set(row.exploration, {
+        ...row,
+      });
+    }
   }
 
   #find(
@@ -110,9 +138,9 @@ export class ExplorationTrackingConcept {
     story: string,
   ): ExplorationRow | undefined {
     return [...this.explorations.values()].find(
-      (exploration) =>
-        exploration.user === user &&
-        exploration.story === story,
+      (item) =>
+        item.user === user &&
+        item.story === story,
     );
   }
 }

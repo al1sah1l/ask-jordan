@@ -1,6 +1,11 @@
 
 import { OpenAIStoryGenerator } from "../ai/OpenAIStoryGenerator.ts";
 
+import {
+  EXPORT_STATE,
+  RESTORE_STATE,
+} from "../persistence-symbols.ts";
+
 import type {
   GeneratedStoryChapter,
   StoryChapterContext,
@@ -37,6 +42,11 @@ export type StorySummary = {
   activity: string;
 };
 
+export type StoryGenerationState = {
+  stories: StoryRow[];
+  chapters: ChapterRow[];
+};
+
 export class StoryGenerationConcept {
   private readonly stories = new Map<string, StoryRow>();
   private readonly chapters = new Map<string, ChapterRow>();
@@ -48,9 +58,6 @@ export class StoryGenerationConcept {
     private readonly generator: StoryGenerator =
       new OpenAIStoryGenerator(),
 
-    // Allows the application to translate a catalog ID
-    // into a meaningful activity name and description.
-    // Defaults to identity for independent concept tests.
     private readonly resolveActivity: (
       activity: string,
     ) => string = (activity) => activity,
@@ -77,8 +84,6 @@ export class StoryGenerationConcept {
       );
     }
 
-    // Generate using the human-readable activity,
-    // not the opaque catalog identifier.
     const activityDescription =
       this.resolveActivity(activity);
 
@@ -89,7 +94,6 @@ export class StoryGenerationConcept {
       previousChapters: [],
     });
 
-    // Recheck after awaiting the external generator.
     const duplicate = [...this.stories.values()].find(
       (item) =>
         item.user === user &&
@@ -113,7 +117,6 @@ export class StoryGenerationConcept {
       question: generated.question,
     };
 
-    // Preserve the actual Activity ID for tracking.
     this.stories.set(story, {
       story,
       user,
@@ -182,7 +185,9 @@ export class StoryGenerationConcept {
         const previous = this.chapters.get(chapterId);
 
         if (!previous) {
-          throw new Error("A story chapter is missing.");
+          throw new Error(
+            "A story chapter is missing.",
+          );
         }
 
         return {
@@ -197,7 +202,6 @@ export class StoryGenerationConcept {
       },
     );
 
-    // Resolve the same catalog activity for each chapter.
     const activityDescription =
       this.resolveActivity(existing.activity);
 
@@ -208,7 +212,6 @@ export class StoryGenerationConcept {
       previousChapters,
     });
 
-    // Prevent concurrent requests from creating extra chapters.
     if (
       existing.chapters.length !== position - 1 ||
       latestChapter.answer !== undefined
@@ -286,6 +289,36 @@ export class StoryGenerationConcept {
     return { stories };
   }
 
+  [EXPORT_STATE](): StoryGenerationState {
+    return {
+      stories: [...this.stories.values()].map(
+        (row) => ({
+          ...row,
+          chapters: [...row.chapters],
+        }),
+      ),
+      chapters: [...this.chapters.values()].map(
+        (row) => ({ ...row }),
+      ),
+    };
+  }
+
+  [RESTORE_STATE](state: StoryGenerationState): void {
+    this.stories.clear();
+    this.chapters.clear();
+
+    for (const row of state.stories) {
+      this.stories.set(row.story, {
+        ...row,
+        chapters: [...row.chapters],
+      });
+    }
+
+    for (const row of state.chapters) {
+      this.chapters.set(row.chapter, { ...row });
+    }
+  }
+
   async #generateChapter(
     input: StoryChapterContext,
   ): Promise<GeneratedStoryChapter> {
@@ -304,14 +337,18 @@ export class StoryGenerationConcept {
         input.position < 3 &&
         !chapter.question?.trim()
       ) {
-        throw new Error("Missing AI chapter question.");
+        throw new Error(
+          "Missing AI chapter question.",
+        );
       }
 
       if (
         input.position === 3 &&
         !chapter.suggestedActivity?.trim()
       ) {
-        throw new Error("Missing AI suggested activity.");
+        throw new Error(
+          "Missing AI suggested activity.",
+        );
       }
 
       return {
