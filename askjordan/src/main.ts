@@ -1,23 +1,51 @@
 
-import { createGateway } from "@mit-sdg/sync-engine/boundary";
-import { createHttpHandler } from "@mit-sdg/sync-engine-http/handler";
+import {
+  createGateway,
+} from "@mit-sdg/sync-engine/boundary";
 
-import { assembleApplication } from "./assembly.ts";
-import { seedCatalog } from "./catalog.ts";
-import { db } from "./db.ts";
-import { policy } from "./http.ts";
-import { ApplicationPersistence } from "./persistence.ts";
-import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
+import {
+  createHttpHandler,
+} from "@mit-sdg/sync-engine-http/handler";
 
+import {
+  assembleApplication,
+} from "./assembly.ts";
+
+import {
+  seedCatalog,
+} from "./catalog.ts";
+
+import {
+  db,
+} from "./db.ts";
+
+import {
+  policy,
+} from "./http.ts";
+
+import {
+  ApplicationPersistence,
+} from "./persistence.ts";
+
+import {
+  createProgressiveHttpHandler,
+} from "./learning/progressiveHttp.ts";
+
+/*
+ * Assemble the application and restore state.
+ */
 const application = assembleApplication();
-const persistence = new ApplicationPersistence(db);
 
-// Restore existing catalog IDs, preferences, stories,
-// chapters, and exploration progress from MongoDB.
-const restored = await persistence.restore(application);
+const persistence =
+  new ApplicationPersistence(db);
 
-// Seed missing predefined activities without replacing
-// IDs belonging to previously saved stories.
+// Restore existing catalog IDs, preferences,
+// stories, chapters, and exploration progress.
+const restored =
+  await persistence.restore(application);
+
+// Seed missing predefined activities without
+// replacing IDs used by saved stories.
 await seedCatalog(application);
 
 // Persist the initial catalog as well.
@@ -29,14 +57,33 @@ console.log(
     : "Initialized new Ask Jordan application state.",
 );
 
+/*
+ * Existing sync-engine HTTP API.
+ */
 const httpApi = createHttpHandler({
   application,
   gateway: createGateway({ application }),
   policy,
 });
 
-const progressiveHttp = createProgressiveHttpHandler(application, db);
+/*
+ * Progressive Story HTTP API.
+ *
+ * Shares the same application and persistence.
+ */
+const progressiveHttp =
+  createProgressiveHttpHandler(
+    application,
+    db,
+    persistence,
+  );
 
+/*
+ * Existing routes that mutate application state.
+ *
+ * Progressive start is intentionally excluded:
+ * the progressive handler persists it directly.
+ */
 const persistentPaths = new Set([
   "/api/interests/preference",
   "/api/stories/start",
@@ -44,15 +91,36 @@ const persistentPaths = new Set([
   "/api/explorations/complete",
 ]);
 
-async function api(request: Request): Promise<Response> {
-  const path = new URL(request.url).pathname;
+const progressivePaths = new Set([
+  "/api/stories/progressive/get",
+  "/api/stories/progressive/start",
+]);
 
-  if (path === "/api/stories/progressive/get") {
+/*
+ * Central API handler.
+ */
+async function api(
+  request: Request,
+): Promise<Response> {
+  const path =
+    new URL(request.url).pathname;
+
+  /*
+   * Progressive endpoints.
+   */
+  if (progressivePaths.has(path)) {
     return progressiveHttp(request);
   }
-  
+
+  /*
+   * Existing endpoints.
+   */
   const response = await httpApi(request);
 
+  /*
+   * Read-only or unsuccessful requests
+   * should not trigger application snapshots.
+   */
   if (
     request.method !== "POST" ||
     !persistentPaths.has(path) ||
@@ -61,8 +129,12 @@ async function api(request: Request): Promise<Response> {
     return response;
   }
 
+  /*
+   * Persist successful legacy mutations.
+   */
   try {
     await persistence.save(application);
+
     return response;
   } catch (error) {
     console.error(
@@ -82,9 +154,18 @@ async function api(request: Request): Promise<Response> {
   }
 }
 
+/*
+ * Bun HTTP server.
+ */
 const server = Bun.serve({
-  hostname: process.env.HOST ?? "127.0.0.1",
-  port: Number(process.env.PORT ?? 3000),
+  hostname:
+    process.env.HOST ??
+    "127.0.0.1",
+
+  port: Number(
+    process.env.PORT ??
+    3000,
+  ),
 
   routes: {
     "/api/*": api,
@@ -119,4 +200,6 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Backend listening on ${server.url}`);
+console.log(
+  `Backend listening on ${server.url}`,
+);
