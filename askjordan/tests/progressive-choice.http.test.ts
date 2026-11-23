@@ -85,7 +85,7 @@ test("progressive choices are validated, authorized and persisted", async () => 
           headers: {
             Origin: "http://127.0.0.1:8080",
             "Content-Type": "application/json",
-            ...(cookie ? { Cookie: `ask-jordan-session=${cookie}` } : {}),
+            ...(cookie ? { Cookie: `__Host-ask-jordan-session=${cookie}` } : {}),
           },
           body: JSON.stringify(body),
         },

@@ -162,7 +162,7 @@ test(
             ...(cookie
               ? {
                   Cookie:
-                    `ask-jordan-session=${cookie}`,
+                    `__Host-ask-jordan-session=${cookie}`,
                 }
               : {}),
           },

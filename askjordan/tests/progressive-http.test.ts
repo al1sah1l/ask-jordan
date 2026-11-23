@@ -128,7 +128,7 @@ test(
               ...(cookie
                 ? {
                     Cookie:
-                      `ask-jordan-session=${cookie}`,
+                      `__Host-ask-jordan-session=${cookie}`,
                   }
                 : {}),
             },
@@ -184,7 +184,7 @@ test(
             Origin: "http://unauthorized.example",
             "Content-Type": "application/json",
             Cookie:
-              `ask-jordan-session=${georgeSession.session}`,
+              `__Host-ask-jordan-session=${georgeSession.session}`,
           },
           body: JSON.stringify({
             story: started.story,

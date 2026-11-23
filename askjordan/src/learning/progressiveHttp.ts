@@ -29,7 +29,7 @@ const CHOICE_PATH = `${BASE}/choice`;
 const REFLECTION_GET_PATH = `${BASE}/reflection/get`;
 const REFLECTION_SAVE_PATH = `${BASE}/reflection/save`;
 const NEXT_PATH = `${BASE}/next`;
-const COOKIE_NAME = "ask-jordan-session";
+const COOKIE_NAME = "__Host-ask-jordan-session";
 const MAX_BODY_BYTES = 5_242_880;
 
 function json(body: unknown, status = 200): Response {

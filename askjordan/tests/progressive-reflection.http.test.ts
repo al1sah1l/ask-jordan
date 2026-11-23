@@ -76,7 +76,7 @@ test("reflection unlocks the next chapter and survives restart", async () => {
         headers: {
           Origin: "http://127.0.0.1:8080",
           "Content-Type": "application/json",
-          ...(session ? { Cookie: `ask-jordan-session=${session}` } : {}),
+          ...(session ? { Cookie: `__Host-ask-jordan-session=${session}` } : {}),
         },
         body: JSON.stringify(body),
       });
