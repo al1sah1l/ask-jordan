@@ -1,6 +1,9 @@
 
 import { createStoryGenerator } from "../ai/createStoryGenerator.ts";
-import { legacyPreparedQuestions, PreparedStoryGenerator } from "../ai/PreparedStoryGenerator.ts";
+import {
+  legacyPreparedQuestions,
+  PreparedStoryGenerator,
+} from "../ai/PreparedStoryGenerator.ts";
 
 import {
   EXPORT_STATE,
@@ -23,6 +26,8 @@ export class GetStoryNotFound extends StoryNotFound {}
 export class ActivityStoryNotFound extends StoryNotFound {}
 export class ActivityNotReached extends Error {}
 
+export type StoryFormat = "legacy" | "progressive";
+
 export type ChapterRow = {
   chapter: string;
   story: string;
@@ -40,12 +45,16 @@ export type StoryRow = {
   activity: string;
   context: string;
   chapters: string[];
+
+  // Optional for compatibility with saved Alpha data.
+  format?: StoryFormat;
 };
 
 export type StorySummary = {
   story: string;
   user: string;
   activity: string;
+  format: StoryFormat;
 };
 
 export type StoryGenerationState = {
@@ -54,8 +63,11 @@ export type StoryGenerationState = {
 };
 
 export class StoryGenerationConcept {
-  private readonly stories = new Map<string, StoryRow>();
-  private readonly chapters = new Map<string, ChapterRow>();
+  private readonly stories =
+    new Map<string, StoryRow>();
+
+  private readonly chapters =
+    new Map<string, ChapterRow>();
 
   constructor(
     private readonly freshID: () => string =
@@ -121,7 +133,9 @@ export class StoryGenerationConcept {
       position: 1,
       text: generated.text,
       question: generated.question,
-      choices: generated.choices ? [...generated.choices] : undefined,
+      choices: generated.choices
+        ? [...generated.choices]
+        : undefined,
     };
 
     this.stories.set(story, {
@@ -130,6 +144,7 @@ export class StoryGenerationConcept {
       activity,
       context,
       chapters: [chapter],
+      format: "legacy",
     });
 
     this.chapters.set(chapter, firstChapter);
@@ -156,14 +171,43 @@ export class StoryGenerationConcept {
       );
     }
 
-    const currentChapterId = existing.chapters.at(-1);
-    const currentChapter = currentChapterId ? this.chapters.get(currentChapterId) : undefined;
-    if (expectedChapter != null && (expectedChapter !== currentChapterId || !currentChapter?.question || currentChapter.answer !== undefined)) {
-      throw new StaleStoryChapter("This chapter has already changed; reopen the story.");
+    if ((existing.format ?? "legacy") !== "legacy") {
+      throw new StoryCannotContinue(
+        "Use the progressive chapter flow for this story.",
+      );
     }
-    const cleanedAnswer = typeof answer === "string" ? answer.trim() : "";
 
-    if (!cleanedAnswer || (currentChapter?.choices && !currentChapter.choices.includes(cleanedAnswer))) {
+    const currentChapterId = existing.chapters.at(-1);
+
+    const currentChapter = currentChapterId
+      ? this.chapters.get(currentChapterId)
+      : undefined;
+
+    if (
+      expectedChapter != null &&
+      (
+        expectedChapter !== currentChapterId ||
+        !currentChapter?.question ||
+        currentChapter.answer !== undefined
+      )
+    ) {
+      throw new StaleStoryChapter(
+        "This chapter has already changed; reopen the story.",
+      );
+    }
+
+    const cleanedAnswer =
+      typeof answer === "string"
+        ? answer.trim()
+        : "";
+
+    if (
+      !cleanedAnswer ||
+      (
+        currentChapter?.choices &&
+        !currentChapter.choices.includes(cleanedAnswer)
+      )
+    ) {
       throw new InvalidStoryAnswer(
         "Choose an offered answer or enter a nonblank answer for an open question.",
       );
@@ -178,7 +222,8 @@ export class StoryGenerationConcept {
     const latestChapterId =
       existing.chapters[existing.chapters.length - 1];
 
-    const latestChapter = this.chapters.get(latestChapterId);
+    const latestChapter =
+      this.chapters.get(latestChapterId);
 
     if (
       !latestChapter ||
@@ -230,8 +275,15 @@ export class StoryGenerationConcept {
       existing.chapters.length !== position - 1 ||
       latestChapter.answer !== undefined
     ) {
-      if (expectedChapter != null) throw new StaleStoryChapter("This chapter has already changed; reopen the story.");
-      throw new StoryCannotContinue("The story changed while generating its next chapter.");
+      if (expectedChapter != null) {
+        throw new StaleStoryChapter(
+          "This chapter has already changed; reopen the story.",
+        );
+      }
+
+      throw new StoryCannotContinue(
+        "The story changed while generating its next chapter.",
+      );
     }
 
     latestChapter.answer = cleanedAnswer;
@@ -244,7 +296,9 @@ export class StoryGenerationConcept {
       position,
       text: generated.text,
       question: generated.question,
-      choices: generated.choices ? [...generated.choices] : undefined,
+      choices: generated.choices
+        ? [...generated.choices]
+        : undefined,
       suggestedActivity: generated.suggestedActivity,
     };
 
@@ -279,16 +333,45 @@ export class StoryGenerationConcept {
           );
         }
 
-        return { ...chapter, choices: chapter.choices ? [...chapter.choices] : undefined };
+        return {
+          ...chapter,
+          choices: chapter.choices
+            ? [...chapter.choices]
+            : undefined,
+        };
       }),
     };
   }
 
-  getActivityChapter({ user, story }: { user: string; story: string }): { chapter: string } {
+  getActivityChapter({
+    user,
+    story,
+  }: {
+    user: string;
+    story: string;
+  }): { chapter: string } {
     const existing = this.stories.get(story);
-    if (!existing || existing.user !== user) throw new ActivityStoryNotFound("This story does not belong to the user.");
-    const final = existing.chapters.map((id) => this.chapters.get(id)).find((row) => row?.position === 3 && row.suggestedActivity?.trim());
-    if (!final) throw new ActivityNotReached("Reach the final activity before saving your work.");
+
+    if (!existing || existing.user !== user) {
+      throw new ActivityStoryNotFound(
+        "This story does not belong to the user.",
+      );
+    }
+
+    const final = existing.chapters
+      .map((id) => this.chapters.get(id))
+      .find(
+        (row) =>
+          row?.position === 3 &&
+          row.suggestedActivity?.trim(),
+      );
+
+    if (!final) {
+      throw new ActivityNotReached(
+        "Reach the final activity before saving your work.",
+      );
+    }
+
     return { chapter: final.chapter };
   }
 
@@ -303,6 +386,7 @@ export class StoryGenerationConcept {
         story: story.story,
         user: story.user,
         activity: story.activity,
+        format: story.format ?? "legacy",
       }))
       .sort((a, b) =>
         a.activity.localeCompare(b.activity),
@@ -316,11 +400,18 @@ export class StoryGenerationConcept {
       stories: [...this.stories.values()].map(
         (row) => ({
           ...row,
+          format: row.format ?? "legacy",
           chapters: [...row.chapters],
         }),
       ),
+
       chapters: [...this.chapters.values()].map(
-        (row) => ({ ...row, choices: row.choices ? [...row.choices] : undefined }),
+        (row) => ({
+          ...row,
+          choices: row.choices
+            ? [...row.choices]
+            : undefined,
+        }),
       ),
     };
   }
@@ -332,19 +423,38 @@ export class StoryGenerationConcept {
     for (const row of state.stories) {
       this.stories.set(row.story, {
         ...row,
+        format: row.format === "progressive"
+          ? "progressive"
+          : "legacy",
         chapters: [...row.chapters],
       });
     }
 
     for (const row of state.chapters) {
-      // BSON stores explicit undefined values as null; restore optional leaves.
-      const upgradedQuestion = row.answer == null && typeof row.question === "string" ? legacyPreparedQuestions[row.question] : undefined;
+      // Preserve historical answer/question migration.
+      const upgradedQuestion =
+        row.answer == null &&
+        typeof row.question === "string"
+          ? legacyPreparedQuestions[row.question]
+          : undefined;
+
       this.chapters.set(row.chapter, {
         ...row,
-        question: upgradedQuestion ?? row.question ?? undefined,
-        choices: upgradedQuestion ? undefined : validChoices(row.choices) ? [...row.choices] : undefined,
+        question:
+          upgradedQuestion ??
+          row.question ??
+          undefined,
+
+        choices: upgradedQuestion
+          ? undefined
+          : validChoices(row.choices)
+            ? [...row.choices]
+            : undefined,
+
         answer: row.answer ?? undefined,
-        suggestedActivity: row.suggestedActivity ?? undefined,
+
+        suggestedActivity:
+          row.suggestedActivity ?? undefined,
       });
     }
   }
@@ -357,7 +467,8 @@ export class StoryGenerationConcept {
         await this.generator.generateChapter(input);
 
       if (
-        typeof chapter?.text !== "string" || !chapter.text.trim() ||
+        typeof chapter?.text !== "string" ||
+        !chapter.text.trim() ||
         chapter.text.length > 5000
       ) {
         throw new Error("Invalid AI chapter text.");
@@ -365,7 +476,11 @@ export class StoryGenerationConcept {
 
       if (
         input.position < 3 &&
-        (typeof chapter.question !== "string" || !chapter.question.trim() || chapter.question.length > 500)
+        (
+          typeof chapter.question !== "string" ||
+          !chapter.question.trim() ||
+          chapter.question.length > 500
+        )
       ) {
         throw new Error(
           "Missing AI chapter question.",
@@ -374,23 +489,42 @@ export class StoryGenerationConcept {
 
       if (
         input.position === 3 &&
-        (typeof chapter.suggestedActivity !== "string" || !chapter.suggestedActivity.trim() || chapter.suggestedActivity.length > 1000)
+        (
+          typeof chapter.suggestedActivity !== "string" ||
+          !chapter.suggestedActivity.trim() ||
+          chapter.suggestedActivity.length > 1000
+        )
       ) {
         throw new Error(
           "Missing AI suggested activity.",
         );
       }
 
-      if (input.position < 3 && chapter.choices != null && (!validChoices(chapter.choices) || /\bwhy\b/i.test(chapter.question!))) {
+      if (
+        input.position < 3 &&
+        chapter.choices != null &&
+        (
+          !validChoices(chapter.choices) ||
+          /\bwhy\b/i.test(chapter.question!)
+        )
+      ) {
         return this.#fallbackChapter(input);
       }
+
       return {
         text: chapter.text.trim(),
-        choices: input.position < 3 && validChoices(chapter.choices) ? [...chapter.choices] : undefined,
+
+        choices:
+          input.position < 3 &&
+          validChoices(chapter.choices)
+            ? [...chapter.choices]
+            : undefined,
+
         question:
           input.position < 3
             ? chapter.question!.trim()
             : undefined,
+
         suggestedActivity:
           input.position === 3
             ? chapter.suggestedActivity!.trim()
@@ -401,12 +535,28 @@ export class StoryGenerationConcept {
     }
   }
 
-  #fallbackChapter(input: StoryChapterContext): Promise<GeneratedStoryChapter> {
-    return new PreparedStoryGenerator().generateChapter(input);
+  #fallbackChapter(
+    input: StoryChapterContext,
+  ): Promise<GeneratedStoryChapter> {
+    return new PreparedStoryGenerator()
+      .generateChapter(input);
   }
 }
 
-/** Validate choices together with their question; never manufacture alternatives. */
-export function validChoices(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length >= 2 && value.length <= 4 && value.every((item) => typeof item === "string" && !!item.trim() && item === item.trim() && item.length <= 200) && new Set(value).size === value.length;
+export function validChoices(
+  value: unknown,
+): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    value.length <= 4 &&
+    value.every(
+      (item) =>
+        typeof item === "string" &&
+        !!item.trim() &&
+        item === item.trim() &&
+        item.length <= 200,
+    ) &&
+    new Set(value).size === value.length
+  );
 }
