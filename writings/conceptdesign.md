@@ -418,17 +418,17 @@ write (user: User, story: Story, chapter: Chapter, text: String): (page: Page)
 
 > **then** add a new Page containing story, chapter, and text to the user's Journal, and return the new page
 
-edit (user: User, chapter: Chapter, text: String): (page: Page)
+edit (user: User, story: Story, chapter: Chapter, text: String): (page: Page)
 
 > **where** user has a journal and there is a page in their journal with chapter
 
 > **then** update the text of the page and return the edited page
 
-read (user: User, chapter: Chapter): (page: Page)
+read (user: User, story: Story): (page: Page)
 
-> **where** user has a journal and there is a page in their journal associated with chapter
+> **where** user has a journal and there is a page in their journal associated with storys
 
-> **then** return the page associated with chapter
+> **then** return the page associated with story
 
 getJournal (user: User): (pages: set Page)
 
