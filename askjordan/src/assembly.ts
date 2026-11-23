@@ -11,7 +11,10 @@ import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
 import { AvatarCustomizingConcept } from "./concepts/AvatarCustomizing.ts";
 import { ExplorationTrackingConcept } from "./concepts/ExplorationTracking.ts";
-import { InterestCollectionConcept } from "./concepts/InterestCollection.ts";
+import {
+  InterestCollectionConcept,
+  CatalogEntryNotFound,
+} from "./concepts/InterestCollection.ts";
 import { InterestGenerationConcept } from "./concepts/InterestGeneration.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
 import { StoryGenerationConcept } from "./concepts/StoryGeneration.ts";
@@ -30,10 +33,6 @@ export type AskJordanOverrides = Partial<{
   StoryGeneration: StoryGenerationConcept;
 }>;
 
-/**
- * Supports production MongoDB instances, test databases,
- * and mock concept implementations.
- */
 export function assembleApplication(
   databaseOrOverrides: Db | AskJordanOverrides = db,
   clock: () => Date = () => new Date(),
@@ -54,6 +53,33 @@ export function assembleApplication(
     ...testOverrides,
   };
 
+  // Share the same catalog instance with StoryGeneration.
+  const interestCollection =
+    overrides.InterestCollection ??
+    new InterestCollectionConcept();
+
+  const storyGeneration =
+    overrides.StoryGeneration ??
+    new StoryGenerationConcept(
+      undefined,
+      undefined,
+      (activityId) => {
+        const activity =
+          interestCollection
+            ._activities({})
+            .find((item) => item.activity === activityId);
+
+        if (!activity) {
+          throw new CatalogEntryNotFound(
+            "The selected activity does not exist.",
+          );
+        }
+
+        // Give the AI meaningful context instead of a UUID.
+        return `${activity.name} — ${activity.description}`;
+      },
+    );
+
   return assemble({
     conceptSet: applicationConceptSet,
 
@@ -63,10 +89,10 @@ export function assembleApplication(
       Account: new AccountConcept(database),
       AvatarCustomizing: new AvatarCustomizingConcept(database),
 
-      InterestCollection: new InterestCollectionConcept(),
+      InterestCollection: interestCollection,
       ExplorationTracking: new ExplorationTrackingConcept(),
       InterestGeneration: new InterestGenerationConcept(),
-      StoryGeneration: new StoryGenerationConcept(),
+      StoryGeneration: storyGeneration,
 
       ...overrides,
     },

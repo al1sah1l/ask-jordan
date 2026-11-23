@@ -247,6 +247,124 @@ Former "preferences for a user" — inputs (user); bindings (preference, subject
 
 ## Reactions
 
+### Accounts.Profile.Create
+
+Authored path: `Accounts.Profile.Create`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 7.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 11.
+
+```reaction
+when RequestBoundary.request (about, name, path: "/account/create", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Accounts.Profile.Create#2
+
+Authored path: `Accounts.Profile.Create`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 7.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 11.
+
+```reaction
+when Sessioning.current (session, user), asked by Accounts.Profile.Create
+where
+  earlier, RequestBoundary.request (about, name, path: "/account/create", requestId, session)
+then
+  Account.createAccount (about, name, user)
+```
+
+### Accounts.Profile.Create#3
+
+Authored path: `Accounts.Profile.Create`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 7.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 11.
+
+```reaction
+when Account.createAccount (about, name, user, profile), asked by Accounts.Profile.Create#2
+where
+  earlier, RequestBoundary.request (about, name, path: "/account/create", requestId, session)
+then
+  RequestBoundary.respond (profile, requestId)
+```
+
+### Accounts.Profile.Get
+
+Authored path: `Accounts.Profile.Get`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 21.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 25.
+
+```reaction
+when RequestBoundary.request (path: "/account/profile", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Accounts.Profile.Get#2
+
+Authored path: `Accounts.Profile.Get`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 21.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 25.
+
+```reaction
+when Sessioning.current (session, user), asked by Accounts.Profile.Get
+then
+  Account.getProfile (user)
+```
+
+### Accounts.Profile.Get#3
+
+Authored path: `Accounts.Profile.Get`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 21.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 25.
+
+```reaction
+when Account.getProfile (user, about, name, profile), asked by Accounts.Profile.Get#2
+where
+  earlier, RequestBoundary.request (path: "/account/profile", requestId, session)
+then
+  RequestBoundary.respond (about, name, profile, requestId)
+```
+
+### Accounts.Profile.Update
+
+Authored path: `Accounts.Profile.Update`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 14.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 18.
+
+```reaction
+when RequestBoundary.request (about, name, path: "/account/update", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Accounts.Profile.Update#2
+
+Authored path: `Accounts.Profile.Update`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 14.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 18.
+
+```reaction
+when Sessioning.current (session, user), asked by Accounts.Profile.Update
+where
+  earlier, RequestBoundary.request (about, name, path: "/account/update", requestId, session)
+then
+  Account.updateProfile (about, name, user)
+```
+
+### Accounts.Profile.Update#3
+
+Authored path: `Accounts.Profile.Update`.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 14.
+- Covered by [Accounts](../design/compositions/Accounts.md), line 18.
+
+```reaction
+when Account.updateProfile (about, name, user, profile), asked by Accounts.Profile.Update#2
+where
+  earlier, RequestBoundary.request (about, name, path: "/account/update", requestId, session)
+then
+  RequestBoundary.respond (profile, requestId)
+```
+
 ### AskJordan.StoryExploration.StoryCreatedStartsExploration
 
 Authored path: `AskJordan.StoryExploration.StoryCreatedStartsExploration`.
@@ -689,6 +807,9 @@ object or lacks a required key. The response uses `INVALID_INPUT` and names
 the path or missing key. A declared default fills an absent key. Endpoints
 not listed here have no explicit input contract.
 
+- `/account/create` — requires `session`, `name`, `about`
+- `/account/profile` — requires `session`
+- `/account/update` — requires `session`, `name`, `about`
 - `/auth/current` — requires `session`
 - `/auth/register` — requires `username`, `password`
 - `/auth/sign-in` — requires `username`, `password`

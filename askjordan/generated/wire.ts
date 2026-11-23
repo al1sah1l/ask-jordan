@@ -11,6 +11,39 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 export type AppWideError = never;
 
 export type AskJordanWire = {
+  "/account/create": {
+    input: {
+      "about": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Account"]["createAccount"]>[0], ["about"]>>;
+      "name": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Account"]["createAccount"]>[0], ["name"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "profile": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Account"]["createAccount"]>>, ["profile"]>>;
+    };
+    error: { error: AppWideError | "BLANK_NAME" | "INVALID_INPUT" | "PROFILE_EXISTS" | "UNKNOWN_SESSION" };
+  };
+  "/account/profile": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "about": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Account"]["getProfile"]>>, ["about"]>>;
+      "name": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Account"]["getProfile"]>>, ["name"]>>;
+      "profile": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Account"]["getProfile"]>>, ["profile"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "NO_PROFILE" | "UNKNOWN_SESSION" };
+  };
+  "/account/update": {
+    input: {
+      "about": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Account"]["updateProfile"]>[0], ["about"]>>;
+      "name": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Account"]["updateProfile"]>[0], ["name"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "profile": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Account"]["updateProfile"]>>, ["profile"]>>;
+    };
+    error: { error: AppWideError | "BLANK_NAME" | "INVALID_INPUT" | "NO_PROFILE" | "UNKNOWN_SESSION" };
+  };
   "/auth/current": {
     input: {
       "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;

@@ -590,3 +590,575 @@ h3 {
     animation-duration: 0.01ms !important;
   }
 }
+
+
+/* ---------------------------------------
+   STORY READER
+--------------------------------------- */
+
+.story-reader {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.story-back {
+  margin-bottom: 35px;
+}
+
+.story-heading {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.story-heading h1 {
+  margin: 20px 0 12px;
+}
+
+.story-heading p {
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.story-progress {
+  padding: 22px 26px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  background: white;
+  margin-bottom: 28px;
+}
+
+.story-progress-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.story-progress-title span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.story-progress-steps {
+  display: flex;
+  gap: 10px;
+}
+
+.story-progress-step {
+  height: 13px;
+  flex: 1;
+  background: #e8f0f0;
+  border-radius: 999px;
+}
+
+.story-progress-step.completed {
+  background: var(--blue);
+}
+
+.story-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.story-chapter-card {
+  padding: 36px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 26px;
+  box-shadow: 0 7px 0 #dceaea;
+}
+
+.chapter-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--blue);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.chapter-number {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--aqua);
+  color: var(--navy);
+  font-size: 19px;
+  box-shadow: 0 4px 0 #8ec9cb;
+}
+
+.story-chapter-card h2 {
+  margin: 25px 0 18px;
+  font-size: 29px;
+}
+
+.chapter-narrative {
+  color: #344861;
+  font-size: 17px;
+  line-height: 2;
+  white-space: pre-wrap;
+}
+
+.story-previous-answer {
+  background: var(--cream);
+  padding: 18px 22px;
+  border-radius: 15px;
+  border-left: 5px solid var(--aqua);
+  margin-top: 25px;
+}
+
+.story-previous-answer p {
+  margin-bottom: 0;
+  color: var(--text-muted);
+}
+
+.story-answer-card {
+  background: #e3f4f4;
+  border: 2px solid var(--aqua);
+  border-radius: 24px;
+  padding: 32px;
+  margin-top: 30px;
+}
+
+.story-answer-card h2 {
+  margin: 18px 0 22px;
+  font-size: 25px;
+}
+
+.story-answer-card textarea {
+  width: 100%;
+  padding: 18px;
+  border: 2px solid var(--border);
+  border-radius: 15px;
+  background: white;
+  color: var(--navy);
+  font: inherit;
+  line-height: 1.7;
+  resize: vertical;
+  margin-bottom: 18px;
+}
+
+.story-answer-card textarea:focus {
+  outline: 3px solid var(--aqua);
+  outline-offset: 2px;
+}
+
+.story-answer-card .button {
+  width: 100%;
+}
+
+.story-challenge {
+  display: flex;
+  gap: 18px;
+  margin-top: 28px;
+  padding: 24px;
+  background: #fff6dd;
+  border: 2px solid #f2dfa1;
+  border-radius: 20px;
+}
+
+.story-challenge-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: #fbd879;
+  font-size: 26px;
+  color: var(--navy);
+}
+
+.story-challenge h3 {
+  margin: 0 0 8px;
+}
+
+.story-challenge p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.story-complete-card {
+  margin-top: 34px;
+  padding: 44px 30px;
+  text-align: center;
+  background: white;
+  border: 2px solid var(--aqua);
+  border-radius: 26px;
+  box-shadow: 0 7px 0 #dceaea;
+}
+
+.story-complete-icon {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #fff0a8;
+  font-size: 46px;
+  color: var(--navy);
+}
+
+.story-complete-card h2 {
+  font-size: 32px;
+  margin: 0 0 12px;
+}
+
+.story-complete-card p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.story-complete-note {
+  font-size: 13px;
+}
+
+.story-complete-card .button {
+  margin-top: 20px;
+}
+
+.story-loading {
+  text-align: center;
+  color: var(--blue);
+  padding: 24px;
+}
+
+.activity-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.activity-card-actions .button {
+  width: 100%;
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .story-chapter-card,
+  .story-answer-card {
+    padding: 24px;
+  }
+
+  .story-chapter-card h2 {
+    font-size: 25px;
+  }
+
+  .chapter-narrative {
+    font-size: 16px;
+  }
+
+  .story-progress {
+    padding: 18px;
+  }
+
+  .story-progress-title {
+    font-size: 13px;
+  }
+}
+
+
+/* ========================================
+   PROFILE ONBOARDING
+======================================== */
+
+.initial-loading {
+  text-align: center;
+  padding: 100px 20px;
+}
+
+.initial-loading p {
+  color: var(--text-muted);
+}
+
+.profile-page {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.profile-page h1 {
+  margin: 24px 0 12px;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  margin-top: 32px;
+  padding: 34px;
+
+  background: white;
+
+  border: 2px solid var(--border);
+  border-radius: 26px;
+
+  box-shadow: 0 7px 0 #dceaea;
+}
+
+.profile-card label {
+  font-weight: 800;
+  margin-top: 10px;
+}
+
+.profile-card input,
+.profile-card textarea {
+  width: 100%;
+  padding: 16px;
+
+  background: #f8fcfc;
+  color: var(--navy);
+
+  border: 2px solid var(--border);
+  border-radius: 14px;
+
+  font: inherit;
+}
+
+.profile-card textarea {
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.profile-card .button {
+  margin-top: 14px;
+}
+
+/* ========================================
+   ACTIVITY ACTION BUTTONS
+======================================== */
+
+.activity-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  width: 100%;
+  margin-top: 24px;
+}
+
+.activity-card-actions .button {
+  width: 100%;
+  margin-top: 0;
+}
+
+/* ========================================
+   STORY READER
+======================================== */
+
+.story-reader {
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.story-heading {
+  text-align: center;
+  margin: 35px 0;
+}
+
+.story-heading h1 {
+  margin: 18px 0 10px;
+}
+
+.story-heading p {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.story-progress {
+  padding: 22px 26px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  margin-bottom: 28px;
+}
+
+.story-progress-title,
+.story-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.story-progress-title span,
+.story-progress-label span {
+  color: var(--text-muted);
+}
+
+.story-progress-steps,
+.story-progress-bars {
+  display: flex;
+  gap: 10px;
+}
+
+.story-progress-step,
+.story-progress-bars div {
+  flex: 1;
+  height: 14px;
+  border-radius: 999px;
+  background: #e5eeee;
+}
+
+.story-progress-step.completed,
+.story-progress-bars div.active {
+  background: var(--blue);
+}
+
+.story-chapter,
+.story-chapter-card {
+  padding: 36px;
+  margin-bottom: 24px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 26px;
+  box-shadow: 0 6px 0 #dceaea;
+}
+
+.story-chapter h2,
+.story-chapter-card h2 {
+  font-size: 29px;
+  margin: 18px 0;
+}
+
+.story-text,
+.chapter-narrative {
+  color: #344861;
+  font-size: 17px;
+  line-height: 2;
+  white-space: pre-wrap;
+}
+
+.previous-answer,
+.story-previous-answer {
+  margin-top: 25px;
+  padding: 18px 22px;
+  background: var(--cream);
+  border-left: 5px solid var(--aqua);
+  border-radius: 14px;
+}
+
+.previous-answer p,
+.story-previous-answer p {
+  margin-bottom: 0;
+  color: var(--text-muted);
+}
+
+.story-answer,
+.story-answer-card {
+  padding: 32px;
+  margin: 32px 0;
+  background: #e3f4f4;
+  border: 2px solid var(--aqua);
+  border-radius: 24px;
+}
+
+.story-answer h2,
+.story-answer-card h2 {
+  margin: 18px 0 22px;
+  font-size: 25px;
+}
+
+.story-answer textarea,
+.story-answer-card textarea {
+  width: 100%;
+  padding: 16px;
+  margin-bottom: 18px;
+  background: white;
+  color: var(--navy);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  font: inherit;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.story-answer .button,
+.story-answer-card .button {
+  width: 100%;
+}
+
+.mini-challenge,
+.story-challenge {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  margin-top: 26px;
+  padding: 24px;
+  background: #fff6dd;
+  border: 2px solid #f2dfa1;
+  border-radius: 20px;
+}
+
+.mini-challenge > span,
+.story-challenge-icon {
+  font-size: 30px;
+}
+
+.mini-challenge h3,
+.story-challenge h3 {
+  margin: 0 0 8px;
+}
+
+.mini-challenge p,
+.story-challenge p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.story-completed,
+.story-complete-card {
+  margin: 34px 0;
+  padding: 42px 28px;
+  text-align: center;
+  background: white;
+  border: 2px solid var(--aqua);
+  border-radius: 26px;
+}
+
+.completion-star,
+.story-complete-icon {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #ffec99;
+  color: var(--navy);
+  font-size: 44px;
+}
+
+.story-completed h2,
+.story-complete-card h2 {
+  font-size: 32px;
+}
+
+.story-completed p,
+.story-complete-card p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.story-completed .button,
+.story-complete-card .button {
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .profile-card,
+  .story-chapter,
+  .story-chapter-card,
+  .story-answer,
+  .story-answer-card {
+    padding: 22px;
+  }
+}
