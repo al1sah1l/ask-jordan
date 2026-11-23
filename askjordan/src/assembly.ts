@@ -12,15 +12,28 @@ import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
 import { AvatarCustomizingConcept } from "./concepts/AvatarCustomizing.ts";
 import { ExplorationTrackingConcept } from "./concepts/ExplorationTracking.ts";
+
 import {
   InterestCollectionConcept,
   CatalogEntryNotFound,
 } from "./concepts/InterestCollection.ts";
+
 import { InterestGenerationConcept } from "./concepts/InterestGeneration.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
 import { StoryGenerationConcept } from "./concepts/StoryGeneration.ts";
-
 import { ReflectingConcept } from "./concepts/Reflecting.ts";
+
+import {
+  createProgressiveStoryEngine,
+} from "./learning/createProgressiveStoryEngine.ts";
+
+import type {
+  ProgressiveContentGenerator,
+} from "./learning/ProgressiveStoryEngine.ts";
+
+import type {
+  ProgressiveStoryEngine,
+} from "./learning/ProgressiveStoryEngine.ts";
 
 import { applicationConceptSet } from "./concepts.ts";
 import { db } from "./db.ts";
@@ -35,19 +48,20 @@ export type AskJordanOverrides = Partial<{
   InterestGeneration: InterestGenerationConcept;
   StoryGeneration: StoryGenerationConcept;
   Reflecting: ReflectingConcept;
+
+  // Test/development injection for progressive content.
+  ProgressiveContentGenerator: ProgressiveContentGenerator;
 }>;
 
 export type PersistableConcepts = {
   interests: InterestCollectionConcept;
   stories: StoryGenerationConcept;
   explorations: ExplorationTrackingConcept;
+
+  // Internal engine; its state is exported by StoryGeneration.
+  progressive: ProgressiveStoryEngine;
 };
 
-/**
- * Each assembled application has its own concept instances.
- * WeakMap lets persistence access the underlying instances
- * without going through the sync-engine action proxy.
- */
 const persistenceInstances = new WeakMap<
   object,
   PersistableConcepts
@@ -91,6 +105,18 @@ export function assembleApplication(
     overrides.InterestCollection ??
     new InterestCollectionConcept();
 
+  // Use exactly the same Reflecting instance for
+  // sync-engine actions and progressive verification.
+  const reflecting =
+    overrides.Reflecting ??
+    new ReflectingConcept(database);
+
+  const progressive =
+    createProgressiveStoryEngine(
+      reflecting,
+      overrides.ProgressiveContentGenerator,
+    );
+
   const storyGeneration =
     overrides.StoryGeneration ??
     new StoryGenerationConcept(
@@ -99,7 +125,10 @@ export function assembleApplication(
       (activityId) => {
         const activity = interestCollection
           ._activities({})
-          .find((item) => item.activity === activityId);
+          .find(
+            (item) =>
+              item.activity === activityId,
+          );
 
         if (!activity) {
           throw new CatalogEntryNotFound(
@@ -109,6 +138,7 @@ export function assembleApplication(
 
         return `${activity.name} — ${activity.description}`;
       },
+      progressive,
     );
 
   const explorationTracking =
@@ -143,7 +173,7 @@ export function assembleApplication(
         new InterestGenerationConcept(),
 
       StoryGeneration: storyGeneration,
-      Reflecting: overrides.Reflecting ?? new ReflectingConcept(database),
+      Reflecting: reflecting,
     },
 
     composition: {
@@ -159,6 +189,7 @@ export function assembleApplication(
     interests: interestCollection,
     stories: storyGeneration,
     explorations: explorationTracking,
+    progressive,
   });
 
   return application;
