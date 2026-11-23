@@ -1,4 +1,9 @@
 
+import {
+  EXPORT_STATE,
+  RESTORE_STATE,
+} from "../persistence-symbols.ts";
+
 export class InvalidCatalogEntry extends Error {}
 export class CatalogEntryExists extends Error {}
 export class CatalogEntryNotFound extends Error {}
@@ -35,14 +40,25 @@ export type PreferenceRow = {
   status: InterestStatus;
 };
 
+export type InterestCollectionState = {
+  topics: TopicRow[];
+  activities: ActivityRow[];
+  connections: ConnectionRow[];
+  preferences: PreferenceRow[];
+};
+
 export class InterestCollectionConcept {
   private readonly topics = new Map<string, TopicRow>();
-  private readonly activities = new Map<string, ActivityRow>();
-  private readonly connections = new Map<string, ConnectionRow>();
-  private readonly preferences = new Map<string, PreferenceRow>();
+  private readonly activities =
+    new Map<string, ActivityRow>();
+  private readonly connections =
+    new Map<string, ConnectionRow>();
+  private readonly preferences =
+    new Map<string, PreferenceRow>();
 
   constructor(
-    private readonly freshID: () => string = () => crypto.randomUUID(),
+    private readonly freshID: () => string =
+      () => crypto.randomUUID(),
   ) {}
 
   registerTopic({
@@ -55,7 +71,9 @@ export class InterestCollectionConcept {
     const normalizedName = name.trim();
 
     if (!normalizedName) {
-      throw new InvalidCatalogEntry("A topic name cannot be blank.");
+      throw new InvalidCatalogEntry(
+        "A topic name cannot be blank.",
+      );
     }
 
     const exists = [...this.topics.values()].some(
@@ -64,7 +82,9 @@ export class InterestCollectionConcept {
     );
 
     if (exists) {
-      throw new CatalogEntryExists("This topic already exists.");
+      throw new CatalogEntryExists(
+        "This topic already exists.",
+      );
     }
 
     const topic = this.freshID();
@@ -102,7 +122,9 @@ export class InterestCollectionConcept {
     );
 
     if (exists) {
-      throw new CatalogEntryExists("This activity already exists.");
+      throw new CatalogEntryExists(
+        "This activity already exists.",
+      );
     }
 
     for (const topic of distinctTopics) {
@@ -156,12 +178,12 @@ export class InterestCollectionConcept {
       );
     }
 
-    const connection = this.#addConnection(
-      activity1,
-      activity2,
-    );
-
-    return { connection };
+    return {
+      connection: this.#addConnection(
+        activity1,
+        activity2,
+      ),
+    };
   }
 
   setPreference({
@@ -193,9 +215,9 @@ export class InterestCollectionConcept {
     }
 
     const existing = [...this.preferences.values()].find(
-      (preference) =>
-        preference.user === user &&
-        preference.subject === subject,
+      (item) =>
+        item.user === user &&
+        item.subject === subject,
     );
 
     if (existing) {
@@ -245,8 +267,10 @@ export class InterestCollectionConcept {
     user: string;
   }): PreferenceRow[] {
     return [...this.preferences.values()]
-      .filter((preference) => preference.user === user)
-      .sort((a, b) => a.subject.localeCompare(b.subject));
+      .filter((item) => item.user === user)
+      .sort((a, b) =>
+        a.subject.localeCompare(b.subject),
+      );
   }
 
   _related({
@@ -276,6 +300,42 @@ export class InterestCollectionConcept {
     return [...related]
       .sort((a, b) => a.localeCompare(b))
       .map((subject) => ({ subject }));
+  }
+
+  [EXPORT_STATE](): InterestCollectionState {
+    return {
+      topics: [...this.topics.values()]
+        .map((row) => ({ ...row })),
+      activities: [...this.activities.values()]
+        .map((row) => ({ ...row })),
+      connections: [...this.connections.values()]
+        .map((row) => ({ ...row })),
+      preferences: [...this.preferences.values()]
+        .map((row) => ({ ...row })),
+    };
+  }
+
+  [RESTORE_STATE](state: InterestCollectionState): void {
+    this.topics.clear();
+    this.activities.clear();
+    this.connections.clear();
+    this.preferences.clear();
+
+    for (const row of state.topics) {
+      this.topics.set(row.topic, { ...row });
+    }
+
+    for (const row of state.activities) {
+      this.activities.set(row.activity, { ...row });
+    }
+
+    for (const row of state.connections) {
+      this.connections.set(row.connection, { ...row });
+    }
+
+    for (const row of state.preferences) {
+      this.preferences.set(row.preference, { ...row });
+    }
   }
 
   #hasConnection(first: string, second: string): boolean {

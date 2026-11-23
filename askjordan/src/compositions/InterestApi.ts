@@ -20,7 +20,9 @@ const {
   ExplorationTracking,
 } = concepts;
 
-// ---------- Response collections ----------
+// ---------------------------------
+// Response collections
+// ---------------------------------
 
 const TopicsList = former(
   "catalog topics",
@@ -70,16 +72,16 @@ const ExplorationHistory = former(
     ).form({ exploration, story, status }),
 );
 
-// ---------- Interest catalog endpoints ----------
+// ---------------------------------
+// Interest endpoints
+// ---------------------------------
 
 const GetTopics = endpoint(
   "/interests/topics",
   ({ session, user }) =>
     receive({ session })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         respond({
@@ -94,9 +96,7 @@ const GetActivities = endpoint(
   ({ session, user }) =>
     receive({ session })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         respond({
@@ -106,25 +106,19 @@ const GetActivities = endpoint(
   { input: { required: ["session"] } },
 );
 
-// ---------- Interest preference endpoints ----------
-
 const SetPreference = endpoint(
   "/interests/preference",
   ({ session, user, subject, status, preference }) =>
     receive({ session, subject, status })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         InterestCollection.setPreference({
           user,
           subject,
           status,
-        }).responds({
-          preference,
-        }),
+        }).responds({ preference }),
       )
       .then(respond({ preference })),
   {
@@ -139,9 +133,7 @@ const GetPreferences = endpoint(
   ({ session, user }) =>
     receive({ session })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         respond({
@@ -151,31 +143,26 @@ const GetPreferences = endpoint(
   { input: { required: ["session"] } },
 );
 
-// ---------- Story endpoints ----------
+// ---------------------------------
+// Story endpoints
+// ---------------------------------
 
 const StartStory = endpoint(
   "/stories/start",
   ({ session, user, activity, about, story, chapter }) =>
     receive({ session, activity })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
-        Account.getProfile({ user }).responds({
-          about,
-        }),
+        Account.getProfile({ user }).responds({ about }),
       )
       .then(
         StoryGeneration.generateStory({
           user,
           activity,
           context: about,
-        }).responds({
-          story,
-          chapter,
-        }),
+        }).responds({ story, chapter }),
       )
       .then(respond({ story, chapter })),
   {
@@ -190,17 +177,13 @@ const GetStory = endpoint(
   ({ session, user, story, chapters }) =>
     receive({ session, story })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         StoryGeneration.getStory({
           user,
           story,
-        }).responds({
-          chapters,
-        }),
+        }).responds({ chapters }),
       )
       .then(respond({ chapters })),
   {
@@ -210,23 +193,39 @@ const GetStory = endpoint(
   },
 );
 
+const GetStories = endpoint(
+  "/stories/list",
+  ({ session, user, stories }) =>
+    receive({ session })
+      .then(
+        Sessioning.current({ session }).responds({ user }),
+      )
+      .then(
+        StoryGeneration.getStories({ user }).responds({
+          stories,
+        }),
+      )
+      .then(respond({ stories })),
+  {
+    input: {
+      required: ["session"],
+    },
+  },
+);
+
 const ContinueStory = endpoint(
   "/stories/continue",
   ({ session, user, story, answer, chapter }) =>
     receive({ session, story, answer })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         StoryGeneration.continueStory({
           user,
           story,
           answer,
-        }).responds({
-          chapter,
-        }),
+        }).responds({ chapter }),
       )
       .then(respond({ chapter })),
   {
@@ -236,16 +235,16 @@ const ContinueStory = endpoint(
   },
 );
 
-// ---------- Exploration endpoints ----------
+// ---------------------------------
+// Exploration endpoints
+// ---------------------------------
 
 const GetExplorationHistory = endpoint(
   "/explorations/history",
   ({ session, user }) =>
     receive({ session })
       .then(
-        Sessioning.current({ session }).responds({
-          user,
-        }),
+        Sessioning.current({ session }).responds({ user }),
       )
       .then(
         respond({
@@ -269,6 +268,7 @@ export const composition = {
   StoryExploring: {
     StartStory,
     GetStory,
+    GetStories,
     ContinueStory,
     ExplorationHistory,
     GetExplorationHistory,
