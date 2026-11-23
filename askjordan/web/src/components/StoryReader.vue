@@ -1,116 +1,133 @@
-
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { api, type Chapter } from "../api/client";
+import ActivityWork from "./ActivityWork.vue";
+import { api, friendlyError, type Chapter } from "../api/client";
 
-const props = defineProps<{
-  storyId: string;
-  activityName: string;
-}>();
-
-const emit = defineEmits<{
-  back: [];
-}>();
-
+const props = defineProps<{ storyId: string; activityName: string }>();
+const emit = defineEmits<{ back: []; busy: [value: boolean] }>();
 const chapters = ref<Chapter[]>([]);
 const answer = ref("");
 const loading = ref(false);
+const workBusy = ref(false);
+const navigationBusy = computed(() => loading.value || workBusy.value);
 const error = ref("");
+const notice = ref("");
+const pendingRefresh = ref(false);
+let pending: { count: number; confirmed: boolean } | null = null;
+const latestChapter = computed(() => chapters.value.at(-1));
+const isFinished = computed(() => chapters.value.length === 3);
+const canContinue = computed(() => !pendingRefresh.value && !isFinished.value && Boolean(latestChapter.value?.question) && !latestChapter.value?.answer);
 
-const latestChapter = computed(() =>
-  chapters.value.at(-1),
-);
+function activitySteps(text: string): string[] {
+  return text.split(/\n+/).flatMap((line) =>
+    line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "")
+      .split(/(?<=[.!?])\s+(?=[A-Z])/)
+  ).map((step) => step.trim()).filter(Boolean);
+}
 
-const isFinished = computed(
-  () => chapters.value.length === 3,
-);
+function setBusy(value: boolean) {
+  loading.value = value;
+  emit("busy", navigationBusy.value);
+}
 
-const canContinue = computed(() =>
-  !isFinished.value &&
-  Boolean(latestChapter.value?.question) &&
-  !latestChapter.value?.answer,
-);
+function setWorkBusy(value: boolean) {
+  workBusy.value = value;
+  emit("busy", navigationBusy.value);
+}
+
+async function readSavedStory() {
+  const response = await api.getStory(props.storyId);
+  if (!Array.isArray(response.chapters) || !response.chapters.length) {
+    throw new Error("Empty story");
+  }
+  chapters.value = response.chapters;
+  if (pending) {
+    if (response.chapters.length > pending.count) {
+      answer.value = "";
+      notice.value = "Your answer is saved. Your next chapter is ready.";
+    } else if (pending.confirmed) {
+      throw new Error("Waiting for saved chapter");
+    } else {
+      notice.value = "No new chapter is saved yet. Your draft is still here; you can try submitting again.";
+    }
+  }
+  pending = null;
+  pendingRefresh.value = false;
+}
 
 async function loadStory() {
-  loading.value = true;
+  if (loading.value) return;
+  setBusy(true);
   error.value = "";
-
   try {
-    const response = await api.getStory(props.storyId);
-    chapters.value = response.chapters;
+    await readSavedStory();
   } catch (err) {
-    error.value =
-      err instanceof Error
-        ? err.message
-        : "Could not load the story.";
+    error.value = friendlyError(err, "We couldn't load your saved story yet. Please retry loading.");
   } finally {
-    loading.value = false;
+    setBusy(false);
   }
 }
 
 async function continueStory() {
   const cleaned = answer.value.trim();
-
-  if (!cleaned || loading.value) return;
-
-  loading.value = true;
+  if (!cleaned || loading.value || !canContinue.value) return;
+  setBusy(true);
   error.value = "";
-
+  notice.value = "";
+  pending = { count: chapters.value.length, confirmed: false };
+  pendingRefresh.value = true;
+  let submissionError: unknown;
   try {
-    await api.continueStory(
-      props.storyId,
-      cleaned,
-    );
-
-    const response = await api.getStory(props.storyId);
-    chapters.value = response.chapters;
-    answer.value = "";
+    await api.continueStory(props.storyId, cleaned, latestChapter.value?.chapter);
+    pending.confirmed = true;
   } catch (err) {
-    error.value =
-      err instanceof Error
-        ? err.message
-        : "Could not continue the story.";
+    submissionError = err;
+  }
+  try {
+    // Always reconcile, including when the POST response was lost after saving.
+    await readSavedStory();
+    if (submissionError && answer.value) {
+      error.value = friendlyError(submissionError, "We couldn't save your answer. Your draft is still here.");
+    }
+  } catch (err) {
+    error.value = friendlyError(err, "We couldn't check your saved answer. Retry loading before continuing; your draft is safe.");
   } finally {
-    loading.value = false;
+    setBusy(false);
   }
 }
 
-watch(
-  () => props.storyId,
-  () => {
-    chapters.value = [];
-    answer.value = "";
-    void loadStory();
-  },
-  { immediate: true },
-);
+watch(() => props.storyId, () => {
+  chapters.value = [];
+  answer.value = "";
+  notice.value = "";
+  pending = null;
+  pendingRefresh.value = false;
+  void loadStory();
+}, { immediate: true });
 </script>
 
 <template>
   <section class="story-reader">
     <button
       class="button button-light story-back"
+      :disabled="navigationBusy"
       @click="emit('back')"
     >
-      ← Back to activities
+      ← Activities
     </button>
 
     <div class="story-heading">
       <span class="eyebrow">
-        YOUR INTERACTIVE ADVENTURE
+        NEW CHAPTER
       </span>
 
       <h1>{{ activityName }}</h1>
 
-      <p>
-        Every choice is part of your journey.
-        Read, imagine, and explore!
-      </p>
     </div>
 
-    <div class="story-progress">
+    <div class="story-progress" role="status" aria-live="polite">
       <div class="story-progress-title">
-        <strong>Your adventure</strong>
+        <strong>Progress</strong>
         <span>{{ chapters.length }} of 3 chapters</span>
       </div>
 
@@ -130,9 +147,13 @@ watch(
       Loading your adventure...
     </p>
 
-    <div v-if="error" class="notification error">
-      {{ error }}
+    <div v-if="error" class="notification error" role="alert">
+      <p>{{ error }}</p>
+      <button class="button button-light" :disabled="navigationBusy" @click="loadStory">Retry loading story</button>
     </div>
+    <p v-if="notice" class="notification success" role="status">{{ notice }}</p>
+    <p v-if="loading && chapters.length" class="story-loading" role="status">Checking your saved adventure…</p>
+    <p v-if="pendingRefresh" class="story-loading">Checking whether your answer was saved before you continue.</p>
 
     <div class="story-chapters">
       <article
@@ -158,15 +179,14 @@ watch(
           }}
         </h2>
 
-        <p class="chapter-narrative">
-          {{ chapter.text }}
-        </p>
+        <p v-for="(paragraph, index) in chapter.text.split(/\n\s*\n/)" :key="index" class="chapter-narrative">{{ paragraph }}</p>
 
         <div
           v-if="chapter.answer"
           class="story-previous-answer"
         >
-          <strong>Your choice</strong>
+          <strong>{{ chapter.question }}</strong>
+          <p class="answer-label">Your saved answer</p>
           <p>{{ chapter.answer }}</p>
         </div>
 
@@ -178,7 +198,9 @@ watch(
 
           <div>
             <h3>Your mini challenge!</h3>
-            <p>{{ chapter.suggestedActivity }}</p>
+            <ol class="challenge-steps">
+              <li v-for="(step, index) in activitySteps(chapter.suggestedActivity)" :key="index">{{ step }}</li>
+            </ol>
           </div>
         </div>
       </article>
@@ -189,17 +211,23 @@ watch(
       class="story-answer-card"
       @submit.prevent="continueStory"
     >
-      <span class="eyebrow">
-        WHAT WOULD YOU DO?
-      </span>
-
-      <h2>{{ latestChapter?.question }}</h2>
+      <h2 id="current-question">{{ latestChapter?.question }}</h2>
+      <fieldset v-if="latestChapter?.choices?.length" class="story-choices">
+        <legend class="sr-only">Your answer</legend>
+        <label v-for="choice in latestChapter.choices" :key="choice" class="story-choice">
+          <input v-model="answer" type="radio" name="story-choice" :value="choice" :disabled="navigationBusy" />
+          <span>{{ choice }}</span>
+        </label>
+      </fieldset>
+      <label v-else for="story-answer" class="sr-only">Your answer</label>
 
       <textarea
+        v-if="!latestChapter?.choices?.length"
+        id="story-answer"
+        aria-describedby="current-question"
         v-model="answer"
         rows="4"
-        placeholder="Write your answer here..."
-        :disabled="loading"
+        :disabled="navigationBusy"
         required
       ></textarea>
 
@@ -211,10 +239,12 @@ watch(
         {{
           loading
             ? "Creating your next chapter..."
-            : "Continue adventure →"
+            : "Continue →"
         }}
       </button>
     </form>
+
+    <ActivityWork v-if="isFinished" :story-id="storyId" @busy="setWorkBusy" />
 
     <div
       v-if="isFinished"
@@ -222,21 +252,13 @@ watch(
     >
       <div class="story-complete-icon">★</div>
 
-      <h2>Adventure complete!</h2>
+      <h2>You reached the story ending!</h2>
 
-      <p>
-        You explored something new today.
-        That's something to be proud of!
-      </p>
-
-      <p class="story-complete-note">
-        Your story is finished. The reflection
-        and exploration-completion steps will
-        be connected next.
-      </p>
+<p>Jordan is proud of you!</p>
 
       <button
         class="button button-primary"
+        :disabled="navigationBusy"
         @click="emit('back')"
       >
         Explore more activities →

@@ -8,9 +8,10 @@ import {
 import {
   each,
   former,
+  compute,
 } from "@mit-sdg/sync-engine/language";
 
-import { concepts } from "../concepts.ts";
+import { applicationConceptSet, concepts } from "../concepts.ts";
 
 const {
   Sessioning,
@@ -18,6 +19,7 @@ const {
   InterestCollection,
   StoryGeneration,
   ExplorationTracking,
+  Reflecting,
 } = concepts;
 
 // ---------------------------------
@@ -215,8 +217,8 @@ const GetStories = endpoint(
 
 const ContinueStory = endpoint(
   "/stories/continue",
-  ({ session, user, story, answer, chapter }) =>
-    receive({ session, story, answer })
+  ({ session, user, story, answer, chapter, expectedChapter }) =>
+    receive({ session, story, answer, expectedChapter })
       .then(
         Sessioning.current({ session }).responds({ user }),
       )
@@ -225,14 +227,51 @@ const ContinueStory = endpoint(
           user,
           story,
           answer,
+          expectedChapter,
         }).responds({ chapter }),
       )
       .then(respond({ chapter })),
   {
     input: {
       required: ["session", "story", "answer"],
+      // Null normalizes omitted expectedChapter for legacy callers.
+      defaults: { expectedChapter: null },
     },
   },
+);
+
+function validReflectionInput(value: unknown, save: boolean) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false as const };
+  const input = value as Record<string, unknown>;
+  const valid = typeof input.story === "string" && !!input.story.trim() && (!save || (typeof input.text === "string" && Array.isArray(input.images) && input.images.every((image) => typeof image === "string")));
+  return valid ? { ok: true as const } : { ok: false as const };
+}
+
+const GetReflection = endpoint(
+  "/stories/reflection/get",
+  ({ session, user, story, chapter, entry, limits }) =>
+    receive({ session, story })
+      .then(Sessioning.current({ session }).responds({ user }))
+      .then(StoryGeneration.getActivityChapter({ user, story }).responds({ chapter }))
+      .then(Reflecting.get({ user, story, chapter }).responds({ entry }))
+      .afterFlowSettles()
+      .where(compute(applicationConceptSet.computations.reflectionLimits, {}, limits))
+      .then(respond({ entry, limits })),
+  { input: { required: ["session", "story"] }, validators: { input: (value: unknown) => validReflectionInput(value, false) } },
+);
+
+const SaveReflection = endpoint(
+  "/stories/reflection/save",
+  ({ session, user, story, chapter, text, images, page, entry, limits }) =>
+    receive({ session, story, text, images })
+      .then(Sessioning.current({ session }).responds({ user }))
+      .then(StoryGeneration.getActivityChapter({ user, story }).responds({ chapter }))
+      .then(Reflecting.save({ user, story, chapter, text, images }).responds({ page }))
+      .then(Reflecting.get({ user, story, chapter }).responds({ entry }))
+      .afterFlowSettles()
+      .where(compute(applicationConceptSet.computations.reflectionLimits, {}, limits))
+      .then(respond({ entry, limits })),
+  { input: { required: ["session", "story", "text", "images"] }, validators: { input: (value: unknown) => validReflectionInput(value, true) } },
 );
 
 // ---------------------------------
@@ -264,6 +303,8 @@ export const composition = {
     SetPreference,
     GetPreferences,
   },
+
+  ActivityReflecting: { GetReflection, SaveReflection },
 
   StoryExploring: {
     StartStory,

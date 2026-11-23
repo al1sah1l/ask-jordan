@@ -5,12 +5,14 @@ import StoryReader from "./components/StoryReader.vue";
 
 import {
   api,
+  ApiError,
+  friendlyError,
   type Activity,
   type Preference,
   type Profile,
 } from "./api/client";
 
-type Screen = "auth" | "profile" | "activities" | "story";
+type Screen = "auth" | "account-error" | "profile" | "activities" | "story";
 
 const screen = ref<Screen>("auth");
 
@@ -29,6 +31,9 @@ const preferences = ref<Preference[]>([]);
 const search = ref("");
 const loading = ref(false);
 const initializing = ref(true);
+const readerBusy = ref(false);
+const navigationBusy = computed(() => loading.value || initializing.value || readerBusy.value);
+const profileReturnScreen = ref<Screen>("activities");
 const error = ref("");
 const message = ref("");
 
@@ -57,6 +62,21 @@ const savedSubjects = computed(
     ),
 );
 
+const interestedActivities = computed(() =>
+  activities.value.filter((activity) => savedSubjects.value.has(activity.activity)),
+);
+
+function activityEmoji(name: string): string {
+  if (name.includes("Photo")) return "📷";
+  if (name.includes("Film")) return "🎬";
+  if (name.includes("Writing")) return "✍️";
+  if (name.includes("Music")) return "🎵";
+  if (name.includes("Robot")) return "🤖";
+  if (name.includes("Game")) return "🎮";
+  if (name.includes("Sports")) return "⚽";
+  return "✨";
+}
+
 async function run(action: () => Promise<void>) {
   if (loading.value) return;
 
@@ -67,10 +87,12 @@ async function run(action: () => Promise<void>) {
   try {
     await action();
   } catch (err) {
-    error.value =
-      err instanceof Error
-        ? err.message
-        : "Something went wrong. Please try again.";
+    error.value = friendlyError(err, "Something went wrong. Please try again.");
+    if (err instanceof ApiError && err.status === 401) {
+      account.value = null;
+      profile.value = null;
+      screen.value = "auth";
+    }
   } finally {
     loading.value = false;
   }
@@ -110,9 +132,8 @@ async function loadProfileAndNavigate() {
     screen.value = "activities";
   } catch (err) {
     if (
-      err instanceof Error &&
-      (err.message === "NOT_FOUND" ||
-        err.message === "NO_PROFILE")
+      err instanceof ApiError &&
+      (err.code === "NOT_FOUND" || err.code === "NO_PROFILE")
     ) {
       profile.value = null;
       profileName.value = "";
@@ -131,17 +152,20 @@ async function saveProfile() {
     const about = profileAbout.value.trim();
 
     if (!name) {
-      throw new Error("Please enter your name.");
+      throw new ApiError("BLANK_NAME", 400, "Please enter a display name.");
     }
 
-    await api.createProfile(name, about);
-
-    profile.value = await api.getProfile();
-
-    await loadCatalog();
-
-    screen.value = "activities";
-    message.value = "Your profile is ready! Let's explore!";
+    const editing = Boolean(profile.value);
+    const result = editing
+      ? await api.updateProfile(name, about)
+      : await api.createProfile(name, about);
+    // Remember the successful mutation even if the next catalog read fails.
+    profile.value = { profile: result.profile, name, about };
+    profileName.value = name;
+    profileAbout.value = about;
+    if (!editing || profileReturnScreen.value === "activities") await loadCatalog();
+    screen.value = editing ? profileReturnScreen.value : "activities";
+    message.value = "Profile saved. New adventures will use these details.";
   });
 }
 
@@ -164,7 +188,12 @@ async function authenticate(mode: "register" | "sign-in") {
     selectedStory.value = null;
     startedStories.value = {};
 
-    await loadProfileAndNavigate();
+    try {
+      await loadProfileAndNavigate();
+    } catch (err) {
+      screen.value = "account-error";
+      throw err;
+    }
   });
 }
 
@@ -194,16 +223,16 @@ async function signOut() {
 
 async function saveInterest(activity: Activity) {
   await run(async () => {
+    const removing = savedSubjects.value.has(activity.activity);
     await api.setPreference(
       activity.activity,
-      "interested",
+      removing ? "notInterested" : "interested",
     );
 
     const result = await api.getPreferences();
     preferences.value = result.preferences;
 
-    message.value =
-      `${activity.name} added to your interests!`;
+    message.value = removing ? "Interest removed." : "Interest saved.";
   });
 }
 
@@ -249,44 +278,77 @@ async function backToActivities() {
   });
 }
 
-onMounted(async () => {
+async function goHome() {
+  if (navigationBusy.value) return;
+  if (account.value && profile.value) {
+    await backToActivities();
+  } else {
+    error.value = "";
+    message.value = "";
+    screen.value = account.value ? "profile" : "auth";
+  }
+}
+
+function editProfile() {
+  if (navigationBusy.value || !profile.value) return;
+  profileReturnScreen.value = screen.value;
+  profileName.value = profile.value.name;
+  profileAbout.value = profile.value.about;
+  error.value = "";
+  message.value = "";
+  screen.value = "profile";
+}
+
+function cancelProfile() {
+  if (navigationBusy.value || !profile.value) return;
+  profileName.value = profile.value.name;
+  profileAbout.value = profile.value.about;
+  error.value = "";
+  screen.value = profileReturnScreen.value;
+}
+
+async function restoreAccount() {
+  initializing.value = true;
+  error.value = "";
   try {
     const result = await api.currentUser();
-
     account.value = result.account;
-
     await loadProfileAndNavigate();
   } catch (err) {
-    if (!account.value) {
+    if (err instanceof ApiError && (err.status === 401 || err.code === "INVALID_INPUT")) {
+      account.value = null;
+      profile.value = null;
       screen.value = "auth";
+      if (err.status === 401) error.value = "Please sign in.";
     } else {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : "Could not load your account.";
+      screen.value = "account-error";
+      error.value = friendlyError(err, "We couldn't load your account. Please try again.");
     }
   } finally {
     initializing.value = false;
   }
-});
+}
+
+onMounted(restoreAccount);
 </script>
 
 <template>
   <div class="app-shell">
     <header class="site-header">
-      <div class="brand">
+      <a class="brand" href="/" :aria-disabled="navigationBusy" @click.prevent="goHome">
         <span class="brand-icon">✦</span>
         Ask Jordan
-      </div>
+      </a>
 
       <div v-if="account" class="account-menu">
         <span>
           Hi, {{ profile?.name || account }}!
         </span>
 
+        <button v-if="profile && screen !== 'profile'" class="button button-light" :disabled="navigationBusy" @click="editProfile">Profile</button>
         <button
           class="button button-light"
-          :disabled="loading"
+          :disabled="navigationBusy"
           @click="signOut"
         >
           Sign out
@@ -319,6 +381,12 @@ onMounted(async () => {
         <p>Just a moment!</p>
       </section>
 
+      <section v-else-if="screen === 'account-error'" class="initial-loading">
+        <h1>Let's reconnect to your account</h1>
+        <p>Your saved profile and stories will be here when the connection returns.</p>
+        <button class="button button-primary" :disabled="navigationBusy" @click="restoreAccount">Retry loading account</button>
+      </section>
+
       <!-- LOGIN / REGISTER -->
       <section
         v-else-if="screen === 'auth'"
@@ -334,23 +402,16 @@ onMounted(async () => {
             <span>makes you curious.</span>
           </h1>
 
-          <p>
-            Explore new activities, follow interactive
-            stories, and discover interests you never
-            knew you had.
-          </p>
+
         </div>
 
         <form
           class="auth-card"
           @submit.prevent="authenticate('sign-in')"
         >
-          <h2>Welcome to Ask Jordan</h2>
+          <h2>Welcome!</h2>
 
-          <p>
-            Sign in or create an account
-            to start exploring.
-          </p>
+
 
           <label for="username">Username</label>
 
@@ -397,24 +458,14 @@ onMounted(async () => {
         v-else-if="screen === 'profile'"
         class="profile-page"
       >
-        <span class="eyebrow">
-          FIRST, LET'S GET TO KNOW YOU
-        </span>
-
-        <h1>Tell us a little about yourself!</h1>
-
-        <p class="page-description">
-          Your answers help us create adventures
-          that feel personal to you.
-          There are no right or wrong answers!
-        </p>
+        <h1>Your profile</h1>
 
         <form
           class="profile-card"
           @submit.prevent="saveProfile"
         >
           <label for="profile-name">
-            What should we call you?
+            Your Name
           </label>
 
           <input
@@ -426,7 +477,7 @@ onMounted(async () => {
           />
 
           <label for="profile-about">
-            What do you enjoy doing?
+            What's your life story? (optional)
           </label>
 
           <textarea
@@ -434,7 +485,9 @@ onMounted(async () => {
             v-model="profileAbout"
             placeholder="I like soccer, music, drawing, movies..."
             rows="5"
+            aria-describedby="profile-guidance"
           ></textarea>
+          <p id="profile-guidance" class="profile-guidance">Saved changes apply only to new adventures.</p>
 
           <button
             class="button button-primary"
@@ -444,10 +497,24 @@ onMounted(async () => {
             {{
               loading
                 ? "Saving profile..."
-                : "Let's explore! →"
+                : profile ? "Save profile" : "Let's explore! →"
             }}
           </button>
+          <button v-if="profile" class="button button-light" type="button" :disabled="navigationBusy" @click="cancelProfile">Cancel</button>
         </form>
+
+        <section v-if="profile && interestedActivities.length" class="profile-interests" aria-labelledby="your-interests">
+          <h2 id="your-interests">Your Interests</h2>
+          <ul class="interest-list">
+            <li v-for="activity in interestedActivities" :key="activity.activity">
+              <button class="interest-row" type="button" :disabled="navigationBusy" @click="openStory(activity)">
+                <span class="interest-row-icon" aria-hidden="true">{{ activityEmoji(activity.name) }}</span>
+                <span>{{ activity.name }}</span>
+                <span class="interest-row-arrow" aria-hidden="true">→</span>
+              </button>
+            </li>
+          </ul>
+        </section>
       </section>
 
       <!-- ACTIVITIES -->
@@ -455,16 +522,7 @@ onMounted(async () => {
         v-else-if="screen === 'activities'"
         class="explore-page"
       >
-        <span class="eyebrow">
-          EXPLORE YOUR POSSIBILITIES
-        </span>
-
-        <h1>What sparks your curiosity?</h1>
-
-        <p class="page-description">
-          Try something new. You might discover
-          a passion you didn't know you had!
-        </p>
+        <h1>What are you curious about?</h1>
 
         <div class="search-bar">
           <span>⌕</span>
@@ -477,11 +535,9 @@ onMounted(async () => {
         </div>
 
         <div class="section-heading">
-          <h2>Activities to explore</h2>
-
-          <span>
-            {{ filteredActivities.length }} activities
-          </span>
+          <h2>Explore</h2>
+          <span aria-hidden="true">·</span>
+          <span>{{ filteredActivities.length }} activities</span>
         </div>
 
         <div class="activity-grid">
@@ -491,23 +547,7 @@ onMounted(async () => {
             class="activity-card"
           >
             <div class="activity-icon">
-              {{
-                activity.name.includes("Photo")
-                  ? "📷"
-                  : activity.name.includes("Film")
-                    ? "🎬"
-                    : activity.name.includes("Writing")
-                      ? "✍️"
-                      : activity.name.includes("Music")
-                        ? "🎵"
-                        : activity.name.includes("Robot")
-                          ? "🤖"
-                          : activity.name.includes("Game")
-                            ? "🎮"
-                            : activity.name.includes("Sports")
-                              ? "⚽"
-                              : "✨"
-              }}
+              {{ activityEmoji(activity.name) }}
             </div>
 
             <h3>{{ activity.name }}</h3>
@@ -522,10 +562,8 @@ onMounted(async () => {
                     ? 'button-saved'
                     : 'button-light'
                 "
-                :disabled="
-                  loading ||
-                  savedSubjects.has(activity.activity)
-                "
+                :disabled="loading"
+                :aria-pressed="savedSubjects.has(activity.activity)"
                 @click="saveInterest(activity)"
               >
                 {{
@@ -570,6 +608,7 @@ onMounted(async () => {
         :story-id="selectedStory"
         :activity-name="selectedActivityName"
         @back="backToActivities"
+        @busy="readerBusy = $event"
       />
     </main>
   </div>

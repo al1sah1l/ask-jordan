@@ -119,3 +119,33 @@ test("create after sign-out is refused", async () => {
   expect(refused.status).toBe(401);
   expect(refused.body).toEqual({ error: "UNAUTHORIZED" });
 });
+
+
+test("blank update preserves saved profile; profile survives reassembly", async () => {
+  const cookie = await signIn();
+  await post("/account/create", { name: "Sam", about: "original" }, cookie);
+  const refused = await post("/account/update", { name: " ", about: "replace" }, cookie);
+  expect(refused.status).toBe(400);
+  const application = assembleApplication(testDb.db);
+  handle = createHttpHandler({ application, gateway: createGateway({ application }), policy });
+  expect((await post("/account/profile", {}, cookie)).body).toEqual({ profile: USERNAME, name: "Sam", about: "original" });
+});
+
+test("session owns profile despite attempted user spoofing", async () => {
+  const cookie = await signIn();
+  await post("/account/create", { name: "Sam", about: "private" }, cookie);
+  const other = await post("/auth/register", { username: "riley", password: PASSWORD });
+  const otherCookie = other.setCookie!.split(";")[0]!;
+  expect((await post("/account/profile", { user: USERNAME }, otherCookie)).status).toBe(404);
+  expect((await post("/account/update", { user: USERNAME, name: "Intruder", about: "changed" }, otherCookie)).status).toBe(404);
+  expect((await post("/account/create", { user: USERNAME, name: "Riley", about: "mine" }, otherCookie)).body).toEqual({ profile: "riley" });
+  expect((await post("/account/profile", { user: "riley" }, cookie)).body).toEqual({ profile: USERNAME, name: "Sam", about: "private" });
+});
+
+test("unauthenticated profile reads and writes are refused", async () => {
+  for (const path of ["/account/profile", "/account/create", "/account/update"]) {
+    const result = await post(path, { name: "Nobody", about: "" }, "ask-jordan-session=invalid");
+    expect(result.status).toBe(401);
+    expect(result.body).toEqual({ error: "UNAUTHORIZED" });
+  }
+});

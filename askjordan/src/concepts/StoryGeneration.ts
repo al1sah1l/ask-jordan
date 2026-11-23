@@ -1,5 +1,6 @@
 
-import { OpenAIStoryGenerator } from "../ai/OpenAIStoryGenerator.ts";
+import { createStoryGenerator } from "../ai/createStoryGenerator.ts";
+import { legacyPreparedQuestions, PreparedStoryGenerator } from "../ai/PreparedStoryGenerator.ts";
 
 import {
   EXPORT_STATE,
@@ -17,6 +18,10 @@ export class StoryAlreadyExists extends Error {}
 export class StoryNotFound extends Error {}
 export class InvalidStoryAnswer extends Error {}
 export class StoryCannotContinue extends Error {}
+export class StaleStoryChapter extends Error {}
+export class GetStoryNotFound extends StoryNotFound {}
+export class ActivityStoryNotFound extends StoryNotFound {}
+export class ActivityNotReached extends Error {}
 
 export type ChapterRow = {
   chapter: string;
@@ -24,6 +29,7 @@ export type ChapterRow = {
   position: number;
   text: string;
   question?: string;
+  choices?: string[];
   answer?: string;
   suggestedActivity?: string;
 };
@@ -56,7 +62,7 @@ export class StoryGenerationConcept {
       () => crypto.randomUUID(),
 
     private readonly generator: StoryGenerator =
-      new OpenAIStoryGenerator(),
+      createStoryGenerator(),
 
     private readonly resolveActivity: (
       activity: string,
@@ -115,6 +121,7 @@ export class StoryGenerationConcept {
       position: 1,
       text: generated.text,
       question: generated.question,
+      choices: generated.choices ? [...generated.choices] : undefined,
     };
 
     this.stories.set(story, {
@@ -134,10 +141,12 @@ export class StoryGenerationConcept {
     user,
     story,
     answer,
+    expectedChapter,
   }: {
     user: string;
     story: string;
     answer: string;
+    expectedChapter?: string | null;
   }): Promise<{ chapter: string }> {
     const existing = this.stories.get(story);
 
@@ -147,11 +156,16 @@ export class StoryGenerationConcept {
       );
     }
 
-    const cleanedAnswer = answer.trim();
+    const currentChapterId = existing.chapters.at(-1);
+    const currentChapter = currentChapterId ? this.chapters.get(currentChapterId) : undefined;
+    if (expectedChapter != null && (expectedChapter !== currentChapterId || !currentChapter?.question || currentChapter.answer !== undefined)) {
+      throw new StaleStoryChapter("This chapter has already changed; reopen the story.");
+    }
+    const cleanedAnswer = typeof answer === "string" ? answer.trim() : "";
 
-    if (!cleanedAnswer) {
+    if (!cleanedAnswer || (currentChapter?.choices && !currentChapter.choices.includes(cleanedAnswer))) {
       throw new InvalidStoryAnswer(
-        "An answer cannot be blank.",
+        "Choose an offered answer or enter a nonblank answer for an open question.",
       );
     }
 
@@ -216,9 +230,8 @@ export class StoryGenerationConcept {
       existing.chapters.length !== position - 1 ||
       latestChapter.answer !== undefined
     ) {
-      throw new StoryCannotContinue(
-        "The story changed while generating its next chapter.",
-      );
+      if (expectedChapter != null) throw new StaleStoryChapter("This chapter has already changed; reopen the story.");
+      throw new StoryCannotContinue("The story changed while generating its next chapter.");
     }
 
     latestChapter.answer = cleanedAnswer;
@@ -231,6 +244,7 @@ export class StoryGenerationConcept {
       position,
       text: generated.text,
       question: generated.question,
+      choices: generated.choices ? [...generated.choices] : undefined,
       suggestedActivity: generated.suggestedActivity,
     };
 
@@ -250,7 +264,7 @@ export class StoryGenerationConcept {
     const existing = this.stories.get(story);
 
     if (!existing || existing.user !== user) {
-      throw new StoryNotFound(
+      throw new GetStoryNotFound(
         "This story does not belong to the user.",
       );
     }
@@ -265,9 +279,17 @@ export class StoryGenerationConcept {
           );
         }
 
-        return { ...chapter };
+        return { ...chapter, choices: chapter.choices ? [...chapter.choices] : undefined };
       }),
     };
+  }
+
+  getActivityChapter({ user, story }: { user: string; story: string }): { chapter: string } {
+    const existing = this.stories.get(story);
+    if (!existing || existing.user !== user) throw new ActivityStoryNotFound("This story does not belong to the user.");
+    const final = existing.chapters.map((id) => this.chapters.get(id)).find((row) => row?.position === 3 && row.suggestedActivity?.trim());
+    if (!final) throw new ActivityNotReached("Reach the final activity before saving your work.");
+    return { chapter: final.chapter };
   }
 
   getStories({
@@ -298,7 +320,7 @@ export class StoryGenerationConcept {
         }),
       ),
       chapters: [...this.chapters.values()].map(
-        (row) => ({ ...row }),
+        (row) => ({ ...row, choices: row.choices ? [...row.choices] : undefined }),
       ),
     };
   }
@@ -315,7 +337,15 @@ export class StoryGenerationConcept {
     }
 
     for (const row of state.chapters) {
-      this.chapters.set(row.chapter, { ...row });
+      // BSON stores explicit undefined values as null; restore optional leaves.
+      const upgradedQuestion = row.answer == null && typeof row.question === "string" ? legacyPreparedQuestions[row.question] : undefined;
+      this.chapters.set(row.chapter, {
+        ...row,
+        question: upgradedQuestion ?? row.question ?? undefined,
+        choices: upgradedQuestion ? undefined : validChoices(row.choices) ? [...row.choices] : undefined,
+        answer: row.answer ?? undefined,
+        suggestedActivity: row.suggestedActivity ?? undefined,
+      });
     }
   }
 
@@ -327,7 +357,7 @@ export class StoryGenerationConcept {
         await this.generator.generateChapter(input);
 
       if (
-        !chapter.text?.trim() ||
+        typeof chapter?.text !== "string" || !chapter.text.trim() ||
         chapter.text.length > 5000
       ) {
         throw new Error("Invalid AI chapter text.");
@@ -335,7 +365,7 @@ export class StoryGenerationConcept {
 
       if (
         input.position < 3 &&
-        !chapter.question?.trim()
+        (typeof chapter.question !== "string" || !chapter.question.trim() || chapter.question.length > 500)
       ) {
         throw new Error(
           "Missing AI chapter question.",
@@ -344,15 +374,19 @@ export class StoryGenerationConcept {
 
       if (
         input.position === 3 &&
-        !chapter.suggestedActivity?.trim()
+        (typeof chapter.suggestedActivity !== "string" || !chapter.suggestedActivity.trim() || chapter.suggestedActivity.length > 1000)
       ) {
         throw new Error(
           "Missing AI suggested activity.",
         );
       }
 
+      if (input.position < 3 && chapter.choices != null && (!validChoices(chapter.choices) || /\bwhy\b/i.test(chapter.question!))) {
+        return this.#fallbackChapter(input);
+      }
       return {
         text: chapter.text.trim(),
+        choices: input.position < 3 && validChoices(chapter.choices) ? [...chapter.choices] : undefined,
         question:
           input.position < 3
             ? chapter.question!.trim()
@@ -367,56 +401,12 @@ export class StoryGenerationConcept {
     }
   }
 
-  #fallbackChapter(
-    input: StoryChapterContext,
-  ): GeneratedStoryChapter {
-    const {
-      position,
-      activity,
-      context,
-      previousChapters,
-    } = input;
-
-    if (position === 1) {
-      return {
-        text:
-          `You are about to explore a new activity: ${activity}. ` +
-          `Imagine meeting someone who enjoys this activity. ` +
-          `They invite you to discover what makes it interesting.` +
-          (context.trim()
-            ? ` You bring your own perspective: ${context.trim()}.`
-            : ""),
-        question:
-          "What would you like to discover about this activity?",
-      };
-    }
-
-    const previousAnswer =
-      previousChapters.at(-1)?.answer ?? "";
-
-    if (position === 2) {
-      return {
-        text:
-          `Your answer was: "${previousAnswer}". ` +
-          `As you explore ${activity}, ` +
-          `you meet someone who shows you another side ` +
-          `of the activity. You get to make a choice ` +
-          `about what to explore next.`,
-        question:
-          "Which part of this experience would you like to try?",
-      };
-    }
-
-    return {
-      text:
-        `Your choice was: "${previousAnswer}". ` +
-        `Your exploration of ${activity} ` +
-        `has reached its conclusion. ` +
-        `You can decide whether you want to ` +
-        `explore this activity further.`,
-      suggestedActivity:
-        `Try a small ${activity} activity ` +
-        `for ten minutes using materials you already have.`,
-    };
+  #fallbackChapter(input: StoryChapterContext): Promise<GeneratedStoryChapter> {
+    return new PreparedStoryGenerator().generateChapter(input);
   }
+}
+
+/** Validate choices together with their question; never manufacture alternatives. */
+export function validChoices(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length >= 2 && value.length <= 4 && value.every((item) => typeof item === "string" && !!item.trim() && item === item.trim() && item.length <= 200) && new Set(value).size === value.length;
 }

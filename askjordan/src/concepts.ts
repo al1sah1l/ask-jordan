@@ -25,6 +25,8 @@ import { interestGeneration } from "./concepts/InterestGeneration.registry.ts";
 import { SessioningConcept, UnknownSession } from "./concepts/Sessioning.ts";
 import { storyGeneration } from "./concepts/StoryGeneration.registry.ts";
 
+import { reflecting } from "./concepts/Reflecting.registry.ts";
+
 const authenticating = registerConcept({
   class: AuthenticatingConcept,
   spec: authenticatingSpec,
@@ -64,6 +66,14 @@ const avatarCustomizing = registerConcept({
   },
 });
 
+export type ReflectionLimits = {
+  maxImages: number;
+  maxImageBytes: number;
+  maxTextCharacters: number;
+  acceptedMimeTypes: string[];
+  requestBodyBytes: number;
+};
+
 export const applicationConceptSet = conceptSet({
   Authenticating: authenticating,
   Sessioning: sessioning,
@@ -73,5 +83,14 @@ export const applicationConceptSet = conceptSet({
   ExplorationTracking: explorationTracking,
   InterestGeneration: interestGeneration,
   StoryGeneration: storyGeneration,
+  Reflecting: reflecting,
+}, {
+  reflectionLimits: (_input: Record<string, never>): ReflectionLimits => ({
+    maxImages: 3,
+    maxImageBytes: 1048576,
+    maxTextCharacters: 5000,
+    acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    requestBodyBytes: 5242880,
+  }),
 });
 export const { concepts } = applicationConceptSet;

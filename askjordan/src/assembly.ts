@@ -19,6 +19,8 @@ import { InterestGenerationConcept } from "./concepts/InterestGeneration.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
 import { StoryGenerationConcept } from "./concepts/StoryGeneration.ts";
 
+import { ReflectingConcept } from "./concepts/Reflecting.ts";
+
 import { applicationConceptSet } from "./concepts.ts";
 import { db } from "./db.ts";
 
@@ -31,6 +33,7 @@ export type AskJordanOverrides = Partial<{
   ExplorationTracking: ExplorationTrackingConcept;
   InterestGeneration: InterestGenerationConcept;
   StoryGeneration: StoryGenerationConcept;
+  Reflecting: ReflectingConcept;
 }>;
 
 export type PersistableConcepts = {
@@ -139,6 +142,7 @@ export function assembleApplication(
         new InterestGenerationConcept(),
 
       StoryGeneration: storyGeneration,
+      Reflecting: overrides.Reflecting ?? new ReflectingConcept(database),
     },
 
     composition: {

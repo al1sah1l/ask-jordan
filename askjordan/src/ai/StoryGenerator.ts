@@ -16,6 +16,7 @@ export type StoryChapterContext = {
 export type GeneratedStoryChapter = {
   text: string;
   question?: string;
+  choices?: string[];
   suggestedActivity?: string;
 };
 

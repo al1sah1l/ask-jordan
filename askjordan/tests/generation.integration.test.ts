@@ -468,7 +468,7 @@ describe("Ask Jordan - Generation Integration Tests", () => {
       story,
     });
 
-    expectRefusal(readResult, "STORY_NOT_FOUND");
+    expectRefusal(readResult, "GET_STORY_NOT_FOUND");
 
     const continueResult = await stories.continueStory({
       user: "sarah",

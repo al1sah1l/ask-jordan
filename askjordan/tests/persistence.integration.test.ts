@@ -278,7 +278,7 @@ test(
 
     expect(forbidden).toHaveProperty(
       "error",
-      "STORY_NOT_FOUND",
+      "GET_STORY_NOT_FOUND",
     );
   },
 );

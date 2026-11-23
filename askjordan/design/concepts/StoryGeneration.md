@@ -18,8 +18,11 @@ external User
 external Activity
   The activity selected for exploration.
 
+opaque ChoiceList
+  An ordered array of two to four distinct nonblank answer strings, each at most 200 characters.
+
 opaque ChapterList
-  An ordered collection of chapter records.
+  An ordered array of records with chapter, story, position, text, optional question, optional choices, optional answer, and optional suggestedActivity fields.
 
 opaque StoryList
   A collection of story summaries.
@@ -40,6 +43,7 @@ a seq of Chapters with
   a position Number
   a text String
   an optional question String
+  an optional choices ChoiceList
   an optional answer String
   an optional suggestedActivity String
 
@@ -48,6 +52,12 @@ Rule: Chapters have consecutive positions beginning with 1.
 Rule: Chapters 1 and 2 contain questions.
 Rule: Chapter 3 has no question and suggests a real-world activity.
 Rule: Each user has at most one Story for a given Activity.
+Rule: Prepared prompts default to short open-ended why questions with text answers and no choices. Choices are optional only for genuinely applicable future or live closed decisions and contain two to four meaningful answers. Chapter 3 has neither question nor choices.
+Rule: Choices belong to their question. Malformed supplied choices cause a coherent prepared open-ended why question without choices; never attach unrelated choices to a live question.
+Rule: On restore, recognized unanswered legacy prepared questions become their corresponding short open-ended why questions and lose choices. Answered historical chapters retain their original questions and accepted answers. This upgrade preserves chapter identities, story text, chapter order, and narrative state. Unrecognized questions retain their existing valid optional choice metadata.
+Rule: New answers are trimmed and must equal an offered choice when choices are present; prepared open-ended questions accept nonblank text. Previously accepted answers are never replayed or revalidated by restoration.
+Rule: Every refusal leaves state unchanged. Continuation atomically verifies the current answering chapter and commits its answer with one successor; races cannot answer or advance a chapter twice.
+Rule: Repeated generation for the same user/activity refuses. A stale supplied expectedChapter refuses, including a repeated accepted continuation; callers recover by reading the story. Omission retains legacy latest-chapter behavior.
 ```
 
 ## Actions
@@ -60,42 +70,57 @@ generateStory (user: User, activity: Activity, context: String) : returns (story
   where no Story exists for user and activity
   then
     create a Story for user and activity with the supplied context
-    create its first Chapter with position 1, text, and a question
+    create its first Chapter with position 1 and text, using a short open-ended why question without choices for prepared content and valid optional choices only for an applicable live closed decision
     associate the new Chapter with the Story
     returns story, chapter
 
-continueStory (user: User, story: Story, answer: String) : returns (chapter: Chapter)
+continueStory (user: User, story: Story, answer: String, expectedChapter?: Chapter) : returns (chapter: Chapter)
   where the Story does not exist or belongs to another user
   then
     refuses STORY_NOT_FOUND "This story does not belong to the user."
-  where the Story belongs to user and the answer is blank
+  where the Story belongs to user and supplied expectedChapter is not its latest unanswered Chapter
   then
-    refuses INVALID_STORY_ANSWER "An answer cannot be blank."
-  where the Story belongs to user, the answer is not blank, and the Story already has three Chapters or its latest Chapter cannot be answered
+    refuses STALE_STORY_CHAPTER "This chapter has already changed; reopen the story."
+  where the Story belongs to user, expectedChapter is absent or current, and the answer is blank or does not match an offered choice
+  then
+    refuses INVALID_STORY_ANSWER "Choose an offered answer or enter a nonblank answer for an open question."
+  where the Story belongs to user, expectedChapter is absent or current, the answer is valid, and the Story has three Chapters or its latest Chapter cannot be answered
   then
     refuses STORY_CANNOT_CONTINUE "The story cannot be continued."
-  where the Story belongs to user, the answer is not blank, the latest Chapter has an unanswered question, and the Story has fewer than three Chapters
+  where the Story belongs to user, expectedChapter is absent or current, the answer is valid, its latest Chapter has an unanswered question, and it has fewer than three Chapters
   then
-    save the answer on the latest Chapter
-    create the next Chapter using the Activity, context, and earlier answers
-    give Chapter 2 a question
-    give Chapter 3 a suggested real-world activity and no question
-    append the Chapter to the Story
+    save the trimmed answer on the latest Chapter
+    create chapter as its successor using Activity, context, and earlier answers
+    give Chapter 2 a short open-ended why question without choices for prepared content, or valid optional choices only for an applicable live closed decision
+    give Chapter 3 a suggested real-world activity and neither question nor choices
+    append chapter to the Story atomically with the accepted answer
     returns chapter
 
 getStory (user: User, story: Story) : returns (chapters: ChapterList)
   where the Story does not exist or belongs to another user
   then
-    refuses STORY_NOT_FOUND "This story does not belong to the user."
+    refuses GET_STORY_NOT_FOUND "This story does not belong to the user."
   where the Story belongs to user
   then
-    collect all Chapters in their original order
+    collect all Chapters in their original order as chapters
     returns chapters
+
+getActivityChapter (user: User, story: Story) : returns (chapter: Chapter)
+  where the Story does not exist or belongs to another user
+  then
+    refuses ACTIVITY_STORY_NOT_FOUND "This story does not belong to the user."
+  where the Story belongs to user and has no third Chapter with a nonblank suggested activity
+  then
+    refuses ACTIVITY_NOT_REACHED "Reach the final activity before saving your work."
+  where the Story belongs to user and has its third Chapter with a nonblank suggested activity
+  then
+    bind that third Chapter as chapter without changing state
+    returns chapter
 
 getStories (user: User) : returns (stories: StoryList)
   where true
   then
-    collect all Stories belonging to user with their associated Activities
+    collect all Stories belonging to user with their associated Activities as stories
     order Stories by activity
     returns stories
 ```

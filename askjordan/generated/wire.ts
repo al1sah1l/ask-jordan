@@ -4,6 +4,7 @@ import type { applicationConceptSet as ApplicationConceptSet } from "../src/conc
 
 type AtPath<T, P extends readonly string[]> = P extends readonly [infer H extends string, ...infer R extends string[]] ? H extends keyof T ? AtPath<T[H], R> : H extends `${number}` ? T extends readonly (infer Item)[] ? AtPath<Item, R> : never : never : T;
 type QueryRow<T> = T extends readonly (infer Row)[] ? Row : T;
+type OneOf<T extends readonly unknown[]> = T[number];
 type Jsonify<T> = T extends Date ? string : T extends null | boolean | number | string ? T : T extends (...args: never[]) => unknown ? never : T extends readonly (infer Item)[] ? Jsonify<Item>[] : T extends object ? { [K in keyof T]: Jsonify<T[K]> } : never;
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -152,13 +153,14 @@ export type AskJordanWire = {
   "/stories/continue": {
     input: {
       "answer": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["answer"]>>;
+      "expectedChapter"?: Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["expectedChapter"]>>;
       "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
       "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["story"]>>;
     };
     output: {
       "chapter": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>>, ["chapter"]>>;
     };
-    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_STORY_ANSWER" | "STORY_CANNOT_CONTINUE" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
+    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_STORY_ANSWER" | "STALE_STORY_CHAPTER" | "STORY_CANNOT_CONTINUE" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
   };
   "/stories/get": {
     input: {
@@ -168,7 +170,7 @@ export type AskJordanWire = {
     output: {
       "chapters": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getStory"]>>, ["chapters"]>>;
     };
-    error: { error: AppWideError | "INVALID_INPUT" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
+    error: { error: AppWideError | "GET_STORY_NOT_FOUND" | "INVALID_INPUT" | "UNKNOWN_SESSION" };
   };
   "/stories/list": {
     input: {
@@ -178,6 +180,30 @@ export type AskJordanWire = {
       "stories": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getStories"]>>, ["stories"]>>;
     };
     error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/stories/reflection/get": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<OneOf<[AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getActivityChapter"]>[0], ["story"]>, AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["get"]>[0], ["story"]>]>>;
+    };
+    output: {
+      "entry": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["get"]>>, ["entry"]>>;
+      "limits": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.computations)["reflectionLimits"]["fn"]>>, []>>;
+    };
+    error: { error: AppWideError | "ACTIVITY_NOT_REACHED" | "ACTIVITY_STORY_NOT_FOUND" | "GET_INVALID_REFERENCE" | "INVALID_INPUT" | "REFLECTION_UNAVAILABLE" | "UNKNOWN_SESSION" };
+  };
+  "/stories/reflection/save": {
+    input: {
+      "images": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["save"]>[0], ["images"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<OneOf<[AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getActivityChapter"]>[0], ["story"]>, AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["get"]>[0], ["story"]>]>>;
+      "text": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["save"]>[0], ["text"]>>;
+    };
+    output: {
+      "entry": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["get"]>>, ["entry"]>>;
+      "limits": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.computations)["reflectionLimits"]["fn"]>>, []>>;
+    };
+    error: { error: AppWideError | "ACTIVITY_NOT_REACHED" | "ACTIVITY_STORY_NOT_FOUND" | "GET_INVALID_REFERENCE" | "INVALID_INPUT" | "REFLECTION_UNAVAILABLE" | "SAVE_IMAGE_TOO_LARGE" | "SAVE_INVALID_IMAGE" | "SAVE_INVALID_REFERENCE" | "SAVE_NO_ENTRY" | "SAVE_TEXT_TOO_LONG" | "SAVE_TOO_MANY_IMAGES" | "UNKNOWN_SESSION" };
   };
   "/stories/start": {
     input: {

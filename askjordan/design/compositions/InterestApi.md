@@ -61,7 +61,15 @@ a duplicate.
 
 A student
 [continues their story](reaction:InterestApi.StoryExploring.ContinueStory)
-by answering its current question.
+by answering its current question. Prepared prompts default to short open-ended
+why questions and text answers. The chapter response retains optional choices
+only for genuinely applicable future or live closed decisions; when present the
+frontend presents those answers as radios. The new reader
+supplies expectedChapter directly to StoryGeneration.continueStory; omission
+remains supported for legacy callers. A supplied stale chapter refuses without
+answering a later chapter. Acknowledge continuation only after the accepted
+answer and its successor are committed under the existing persistence boundary.
+After an uncertain reply, fetch the story rather than replay the old answer.
 
 A student
 [retrieves their exploration history](reaction:InterestApi.StoryExploring.GetExplorationHistory)
@@ -78,9 +86,62 @@ InterestApi.StoryExploring.ContinueStory at /stories/continue
 InterestApi.StoryExploring.GetExplorationHistory at /explorations/history
 ```
 
+## Final-activity work
+
+An authenticated student [reopens their activity work](reaction:InterestApi.ActivityReflecting.GetReflection).
+An authenticated student [saves their activity work](reaction:InterestApi.ActivityReflecting.SaveReflection).
+Both flows resolve Sessioning.current and call StoryGeneration.getActivityChapter
+with that user and the requested story before any Reflecting access. Missing
+and foreign stories have indistinguishable not-found behavior. An owned story
+without its final activity refuses ACTIVITY_NOT_REACHED. Unknown or expired
+sessions retain Sessioning's UNKNOWN_SESSION refusal. The caller cannot supply
+another user or a different chapter; the returned final chapter is authoritative.
+Legacy Reflecting actions and journal queries are not public endpoint bypasses.
+
+GetReflection calls Reflecting.get with the authorized user/story/chapter and
+returns its PageResult as entry, including null for unsaved work. Absence is
+revealed only after authorization and activity eligibility. SaveReflection calls
+Reflecting.save with that same scope and the complete submitted text/image
+replacement, then Reflecting.get to return the committed entry. Reflecting owns
+content validation and its stable refusal codes; input/content refusal has no effect.
+A durable page-operation failure preserves previous saved page content, although an
+empty ensured journal may remain if journal creation succeeded first. Journal and
+page writes are not promised to be one transaction.
+Neither endpoint changes ExplorationTracking.
+
+Both answers include the [upload limits](computation:reflectionLimits).
+This is a pure constant projection, not a concept-state lookup.
+
+```computations
+reflectionLimits() : ReflectionLimits
+  Produces maxImages 3, maxImageBytes 1048576, maxTextCharacters 5000, acceptedMimeTypes image/jpeg, image/png, image/webp, and requestBodyBytes 5242880.
+```
+
+```endpoints
+InterestApi.ActivityReflecting.GetReflection at /stories/reflection/get
+InterestApi.ActivityReflecting.SaveReflection at /stories/reflection/save
+```
+
+The existing request boundary accepts bounded JSON data URLs within that body
+limit and refuses oversized requests with INVALID_REQUEST before page changes.
+Malformed request values refuse INVALID_REQUEST before concept effects. No
+separate upload route, client-selected owner, or public image URL is introduced.
+
+Save acknowledgement follows durable complete-page replacement and retrieval of
+the resulting entry. There is no success before required persistence. A failed page replacement
+preserves previous saved page content; concurrent accepted replacements use
+last-writer-wins behavior without merging. The retry identity is the authorized
+user/story/final-chapter tuple, checked by Reflecting.save; identical replacement
+retries retain page identity and do not duplicate pages. A lost reply or failed
+post-save read can leave durable work unknown to the browser. Reopening through
+GetReflection recovers it; retrying the same replacement is safe when no newer
+edit must be preserved. Journal creation alone carries no submitted-work meaning.
+This is a server-side durable success boundary, not an exactly-once delivery
+promise.
+
 ## Persistence
 
-InterestCollection, StoryGeneration, and ExplorationTracking
+InterestCollection, StoryGeneration, ExplorationTracking, and Reflecting
 remain independent concepts.
 
 The application persistence adapter stores and restores
@@ -99,7 +160,23 @@ For Alpha, students can browse a predefined catalog, save
 interests, create and continue stories, and reopen stories
 across application restarts.
 
-Reflection remains a separate concept integration.
+Students can also save and reopen private final-activity text and uploaded photos.
+Reflection persistence must be ready before serving these endpoints: initialization
+never returns an empty page in place of unavailable durable work. Adapter
+unavailability refuses the internal/domain REFLECTION_UNAVAILABLE until recovery.
+That refusal is left unmapped in publicErrors: the existing boundary returns its
+opaque INTERNAL_ERROR response and permits retry through the same endpoint. No
+UNAVAILABLE category, custom response, or custom router is selected. Persisted
+work is never returned as absent during unavailability. Old snapshots
+without Reflecting represent no saved work; legacy pages without photos have
+empty images. Preserve existing story/page identities and answers; ambiguous
+legacy chapter associations are not silently reassigned. On restore, recognized
+unanswered legacy prepared questions become short open-ended why questions with
+choices removed, consistently with newly generated prepared content and malformed
+choice fallback. Answered historical chapters retain original questions and accepted
+answers. Chapter identities, story text, order, and narrative state remain unchanged.
+Browser previews are
+transient; saved photos and text come from the backend.
 
 The frontend sends session cookies with requests and
 does not choose the account identifier.

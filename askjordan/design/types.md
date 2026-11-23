@@ -1,6 +1,6 @@
 # Ask Jordan application types
 
-A user is the account Authenticating returned. A session, a profile, and an avatar use that account. InterestCollection owns activities. StoryGeneration owns stories, and ExplorationTracking uses those stories. Items are not created by any concept yet.
+A user is the account Authenticating returned. A session, a profile, and an avatar use that account. InterestCollection owns activities. StoryGeneration owns stories, and ExplorationTracking uses those stories. Reflecting uses those stories and their chapters for private work. Items are not created by any concept yet.
 
 ```instances
 instantiate Authenticating
@@ -28,4 +28,8 @@ instantiate InterestGeneration with
 instantiate StoryGeneration with
   User is Authenticating.Account
   Activity is InterestCollection.Activity
+instantiate Reflecting with
+  User is Authenticating.Account
+  Story is StoryGeneration.Story
+  Chapter is StoryGeneration.Chapter
 ```
