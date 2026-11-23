@@ -1,9 +1,10 @@
 
+import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 const server = await createServer({
-  root: new URL(".", import.meta.url).pathname,
+  root: fileURLToPath(new URL(".", import.meta.url)),
   plugins: [vue()],
 
   server: {

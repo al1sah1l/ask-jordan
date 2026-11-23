@@ -6,6 +6,7 @@ import { composition as accounts } from "./compositions/Accounts.ts";
 import { composition as sessions } from "./compositions/Sessions.ts";
 import { composition as explorationComposition } from "./compositions/ExplorationFlow.ts";
 import { composition as interestApi } from "./compositions/InterestApi.ts";
+import { composition as reflectingComposition } from "./compositions/Reflecting.ts";
 
 import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
@@ -16,6 +17,7 @@ import {
   CatalogEntryNotFound,
 } from "./concepts/InterestCollection.ts";
 import { InterestGenerationConcept } from "./concepts/InterestGeneration.ts";
+import { ReflectingConcept } from "./concepts/Reflecting.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
 import { StoryGenerationConcept } from "./concepts/StoryGeneration.ts";
 
@@ -31,6 +33,7 @@ export type AskJordanOverrides = Partial<{
   ExplorationTracking: ExplorationTrackingConcept;
   InterestGeneration: InterestGenerationConcept;
   StoryGeneration: StoryGenerationConcept;
+  Reflecting: ReflectingConcept;
 }>;
 
 export function assembleApplication(
@@ -93,6 +96,7 @@ export function assembleApplication(
       ExplorationTracking: new ExplorationTrackingConcept(),
       InterestGeneration: new InterestGenerationConcept(),
       StoryGeneration: storyGeneration,
+      Reflecting: new ReflectingConcept(),
 
       ...overrides,
     },
@@ -102,6 +106,7 @@ export function assembleApplication(
       Accounts: accounts,
       AskJordan: explorationComposition,
       InterestApi: interestApi,
+      Reflecting: reflectingComposition,
     },
   });
 }

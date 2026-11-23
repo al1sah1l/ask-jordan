@@ -13,6 +13,7 @@ export default {
       new URL("./design/compositions/Accounts.md", import.meta.url),
       new URL("./design/compositions/ExplorationFlow.md", import.meta.url),
       new URL("./design/compositions/InterestApi.md", import.meta.url),
+      new URL("./design/compositions/Reflecting.md", import.meta.url),
     ],
   },
 };

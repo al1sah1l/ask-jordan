@@ -68,7 +68,11 @@ export class ReflectingConcept {
     }
 
     const chapterKey = String(chapter);
-    const existing = this.#findPage(journal.journal, chapterKey);
+    const existing = this.#findPage(
+      journal.journal,
+      chapterKey,
+      story,
+    );
 
     if (existing) {
       throw new PageAlreadyExists(
@@ -95,13 +99,13 @@ export class ReflectingConcept {
     text,
   }: {
     user: string;
-    story?: string;
+    story: string;
     chapter: string | number;
     text: string;
   }): { page: string } {
     const journal = this.#requireJournal(user);
 
-    if (!this.#validChapter(chapter)) {
+    if (!this.#validStory(story) || !this.#validChapter(chapter)) {
       throw new InvalidStoryOrChapter(
         "This story or chapter is invalid.",
       );
@@ -113,21 +117,13 @@ export class ReflectingConcept {
     }
 
     const chapterKey = String(chapter);
-    const existing = this.#findPage(journal.journal, chapterKey);
+    const existing = this.#findPage(
+      journal.journal,
+      chapterKey,
+      story,
+    );
 
     if (!existing) {
-      throw new NoPageFound(
-        "The page you want to edit could not be found.",
-      );
-    }
-
-    if (story !== undefined && !this.#validStory(story)) {
-      throw new InvalidStoryOrChapter(
-        "This story or chapter is invalid.",
-      );
-    }
-
-    if (story !== undefined && existing.story !== story) {
       throw new NoPageFound(
         "The page you want to edit could not be found.",
       );
@@ -141,36 +137,22 @@ export class ReflectingConcept {
   read({
     user,
     story,
-    chapter,
   }: {
     user: string;
-    story?: string;
-    chapter?: string | number;
+    story: string;
   }): { page: string } {
     const journal = this.#requireJournal(user);
-
-    let found: PageRow | undefined;
-
-    if (chapter !== undefined) {
-      if (!this.#validChapter(chapter)) {
-        throw new InvalidStoryOrChapter(
-          "This story or chapter is invalid.",
-        );
-      }
-
-      found = this.#findPage(journal.journal, String(chapter), story);
-    } else if (story !== undefined) {
-      found = this.#findPageByStory(journal.journal, story);
+    if (!this.#validStory(story)) {
+      throw new InvalidStoryOrChapter(
+        "This story or chapter is invalid.",
+      );
     }
 
+    const found = this.#findPageByStory(journal.journal, story);
+
     if (!found) {
-      if (story !== undefined) {
-        throw new NoStoryFound(
-          "This user does not have an entry for this story.",
-        );
-      }
-      throw new NoPageFound(
-        "The page you want to read could not be found.",
+      throw new NoStoryFound(
+        "This user does not have an entry for this story.",
       );
     }
 
@@ -202,8 +184,8 @@ export class ReflectingConcept {
     chapter,
   }: {
     user: string;
-    story?: string;
-    chapter?: string | number;
+    story: string;
+    chapter: string | number;
   }): PageRow[] {
     const journal = this.#findJournal(user);
     if (!journal) return [];
@@ -211,8 +193,8 @@ export class ReflectingConcept {
     return [...this.pages.values()]
       .filter((page) =>
         this.#ownsPage(journal.journal, page) &&
-        (story === undefined || page.story === story) &&
-        (chapter === undefined || page.chapter === String(chapter))
+        page.story === story &&
+        page.chapter === String(chapter)
       )
       .map((page) => ({ ...page }));
   }

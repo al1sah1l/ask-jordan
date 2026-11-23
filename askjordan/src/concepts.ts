@@ -22,6 +22,7 @@ import {
 import { explorationTracking } from "./concepts/ExplorationTracking.registry.ts";
 import { interestCollection } from "./concepts/InterestCollection.registry.ts";
 import { interestGeneration } from "./concepts/InterestGeneration.registry.ts";
+import { reflecting } from "./concepts/Reflecting.registry.ts";
 import { SessioningConcept, UnknownSession } from "./concepts/Sessioning.ts";
 import { storyGeneration } from "./concepts/StoryGeneration.registry.ts";
 
@@ -73,5 +74,6 @@ export const applicationConceptSet = conceptSet({
   ExplorationTracking: explorationTracking,
   InterestGeneration: interestGeneration,
   StoryGeneration: storyGeneration,
+  Reflecting: reflecting,
 });
 export const { concepts } = applicationConceptSet;

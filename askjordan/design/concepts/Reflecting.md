@@ -1,140 +1,117 @@
 # Reflecting
 
-
 ## Purpose
 
-provide users with a space to reflect on their thoughts and opinions after each chapter of a story; prevents users from losing their reflections and allows them to revisit how their thoughts developed throughout an exploration.
-
+Provide users with a space to reflect on their thoughts and opinions after each chapter of a story. Keep those reflections available so users can revisit how their thoughts developed throughout an exploration.
 
 ## Principle
-after reading a chapter, a user can record their thoughts about the experience. Each reflection is associated with a specific chapter, allowing users to reflect multiple times while exploring the same interest. Reflections can later be retrieved or edited.
 
+After reading a chapter, a user can record their thoughts about the experience. Each reflection belongs to a story and chapter. Users can retrieve and edit their reflections later.
 
 ## Types
-```
+
+```types
 external User
-    the person who is reflecting on their experience
+  The account Authenticating returned.
 
 external Story
-    the story detailing the Interest and experience that the user explored
+  A story created by StoryGeneration.
 
 external Chapter
-    the numeric representation of the chapter of the story that the user is reflecting on
+  A chapter belonging to a StoryGeneration story.
 ```
 
 ## State
+
 ```state
 a set of Journals with
-    an owner User
-    a set of Pages
+  a unique owner User
 
-a Page containing
-    a Story
-    a Chapter
-    a text String
+a set of Pages with
+  an owner Journal
+  a Story
+  a Chapter
+  a text String
+  unique owner and story and chapter
 ```
 
 ## Actions
 
 ```actions
-
-createJournal(user: User): returns (journal: Journal)
-
-where user does already have a journal
-
-then
+createJournal (user: User) : returns (journal: Journal)
+  where user already has a journal
+  then
     refuses JOURNAL_CREATED "This user already has a journal."
-
-where user does not have a journal
-
-then
-    create a new Journal with user User and an empty set of Pages.
+  where user has no journal
+  then
+    create an empty Journal for user
     returns journal
 
-write (user: User, story: Story, chapter: Chapter, text: String): returns (page: Page)
-
-where user does not have a journal
-
-then
+write (user: User, story: Story, chapter: Chapter, text: String) : returns (page: Page)
+  where user has no journal
+  then
     refuses NO_JOURNAL_FOUND "This user does not have a journal yet."
-
-where story is invalid or chapter is invalid
-
-then
+  where story or chapter is invalid
+  then
     refuses INVALID_STORY_OR_CHAPTER "This story or chapter is invalid."
-
-where story already contains chapter
-
-then
+  where a Page already exists for user, story, and chapter
+  then
     refuses NOT_ABLE_TO_WRITE "This story already contains this chapter."
-
-where text is empty
-
-then
+  where text is blank
+  then
     refuses NO_ENTRY "You must write some reflection on your experience."
+  where user has a journal, story and chapter are valid, no Page exists for story and chapter, and text is not blank
+  then
+    add a Page to the user's Journal with story, chapter, and text
+    returns page
 
-where user does have a journal, story is valid, chapter is valid, and text is nonempty
-
-then
-    create a new Page with story, chapter, and text
-    add page to journal
-    return page
-
-edit (user: User, story: Story, chapter: Chapter, text: String): (page: Page)
-
-where user does not have a journal
-
-then
+edit (user: User, story: Story, chapter: Chapter, text: String) : returns (page: Page)
+  where user has no journal
+  then
     refuses NO_JOURNAL_FOUND "This user does not have a journal yet."
-
-where story is invalid or chapter is invalid
-
-then
+  where story or chapter is invalid
+  then
     refuses INVALID_STORY_OR_CHAPTER "This story or chapter is invalid."
-
-where text is empty
-
-then
+  where text is blank
+  then
     refuses NO_ENTRY "You must write some reflection on your experience."
+  where no Page exists for user, story, and chapter
+  then
+    refuses NO_PAGE_FOUND "The page you want to edit could not be found."
+  where a Page exists for user, story, and chapter and text is not blank
+  then
+    update the Page text
+    returns page
 
-where user does have a journal, story is valid, chapter is valid, and no page is found
-
-then
-    refuses NO_PAGE_FOUND "The page you want to edit could not be found"
-
-where user does have a journal, story is valid, chapter is valid, and text is nonempty
-
-then
-    edit page to have text
-    return page
-
-
-read(user: User, story: Story): (page: Page)
-
-where user does not have a journal
-
-then
+read (user: User, story: Story) : returns (page: Page)
+  where user has no journal
+  then
     refuses NO_JOURNAL_FOUND "This user does not have a journal yet."
-
-where there is no page with story
-
-then
+  where no Page exists for user and story
+  then
     refuses NO_STORY_FOUND "This user does not have an entry for this story."
+  where a Page exists for user and story
+  then
+    returns page
 
-where user has a journal that contains a page with story
-
-then
-    return page associated with story.
-
-getJournal(user: User): (pages: set Page)
-
-where user does not have a journal
-
-then
+getJournal (user: User) : returns (pages: Page)
+  where user has no journal
+  then
     refuses NO_JOURNAL_FOUND "This user does not have a journal yet."
+  where user has a journal
+  then
+    returns pages
+```
 
-where user does have a journal
+## Queries
 
-then
-    return the pages of the journal
+```queries
+_journal (user: User) : optional (journal: Journal, user: User)
+  Returns the user's journal, if one exists.
+
+_page (user: User, story: Story, chapter: Chapter) : optional (page: Page, story: Story, chapter: Chapter, text: String)
+  Returns the reflection for the given story and chapter, if one exists.
+
+_pages (user: User) : many (page: Page, story: Story, chapter: Chapter, text: String)
+  Returns all reflections in the user's journal.
 ```

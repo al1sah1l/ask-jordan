@@ -28,4 +28,9 @@ instantiate InterestGeneration with
 instantiate StoryGeneration with
   User is Authenticating.Account
   Activity is InterestCollection.Activity
+
+instantiate Reflecting with
+  User is Authenticating.Account
+  Story is StoryGeneration.Story
+  Chapter is StoryGeneration.Chapter
 ```

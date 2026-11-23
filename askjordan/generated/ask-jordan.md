@@ -145,6 +145,43 @@ Defined in [InterestGeneration](../design/concepts/InterestGeneration.md), line 
   - `Activity` is `InterestCollection.Activity` — [Ask Jordan application types](../design/types.md), line 26.
   - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 25.
 
+### Reflecting
+
+Defined in [Reflecting](../design/concepts/Reflecting.md), line 1.
+
+#### Actions
+
+- `createJournal(user: User) : returns (journal: Journal)`
+  - Refuses `JOURNAL_CREATED`: This user already has a journal.
+- `write(user: User, story: Story, chapter: Chapter, text: String) : returns (page: Page)`
+  - Refuses `NO_JOURNAL_FOUND`: This user does not have a journal yet.
+  - Refuses `INVALID_STORY_OR_CHAPTER`: This story or chapter is invalid.
+  - Refuses `NOT_ABLE_TO_WRITE`: This story already contains this chapter.
+  - Refuses `NO_ENTRY`: You must write some reflection on your experience.
+- `edit(user: User, story: Story, chapter: Chapter, text: String) : returns (page: Page)`
+  - Refuses `NO_JOURNAL_FOUND`: This user does not have a journal yet.
+  - Refuses `INVALID_STORY_OR_CHAPTER`: This story or chapter is invalid.
+  - Refuses `NO_ENTRY`: You must write some reflection on your experience.
+  - Refuses `NO_PAGE_FOUND`: The page you want to edit could not be found.
+- `read(user: User, story: Story) : returns (page: Page)`
+  - Refuses `NO_JOURNAL_FOUND`: This user does not have a journal yet.
+  - Refuses `NO_STORY_FOUND`: This user does not have an entry for this story.
+- `getJournal(user: User) : returns (pages: Page)`
+  - Refuses `NO_JOURNAL_FOUND`: This user does not have a journal yet.
+
+#### Queries
+
+- `_journal(user: User) : optional (journal: Journal, user: User)`
+- `_page(user: User, story: Story, chapter: Chapter) : optional (page: Page, story: Story, chapter: Chapter, text: String)`
+- `_pages(user: User) : many (page: Page, story: Story, chapter: Chapter, text: String)`
+
+#### Instances
+
+- `Reflecting` — instance of `Reflecting` — [Ask Jordan application types](../design/types.md), line 32.
+  - `Chapter` is `StoryGeneration.Chapter` — [Ask Jordan application types](../design/types.md), line 35.
+  - `Story` is `StoryGeneration.Story` — [Ask Jordan application types](../design/types.md), line 34.
+  - `User` is `Authenticating.Account` — [Ask Jordan application types](../design/types.md), line 33.
+
 ### Sessioning
 
 Defined in [Sessioning](../design/concepts/Sessioning.md), line 1.
@@ -672,6 +709,202 @@ then
   RequestBoundary.respond (chapter, requestId, story)
 ```
 
+### Reflecting.CreateJournal
+
+Authored path: `Reflecting.CreateJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 6.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 9.
+
+```reaction
+when RequestBoundary.request (path: "/reflecting/createjournal", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Reflecting.CreateJournal#2
+
+Authored path: `Reflecting.CreateJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 6.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 9.
+
+```reaction
+when Sessioning.current (session, user), asked by Reflecting.CreateJournal
+then
+  Reflecting.createJournal (user)
+```
+
+### Reflecting.CreateJournal#3
+
+Authored path: `Reflecting.CreateJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 6.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 9.
+
+```reaction
+when Reflecting.createJournal (user, journal), asked by Reflecting.CreateJournal#2
+where
+  earlier, RequestBoundary.request (path: "/reflecting/createjournal", requestId, session)
+then
+  RequestBoundary.respond (journal, requestId)
+```
+
+### Reflecting.Edit
+
+Authored path: `Reflecting.Edit`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 19.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 22.
+
+```reaction
+when RequestBoundary.request (chapter, path: "/reflecting/edit", requestId, session, story, text)
+then
+  Sessioning.current (session)
+```
+
+### Reflecting.Edit#2
+
+Authored path: `Reflecting.Edit`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 19.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 22.
+
+```reaction
+when Sessioning.current (session, user), asked by Reflecting.Edit
+where
+  earlier, RequestBoundary.request (chapter, path: "/reflecting/edit", requestId, session, story, text)
+then
+  Reflecting.edit (chapter, story, text, user)
+```
+
+### Reflecting.Edit#3
+
+Authored path: `Reflecting.Edit`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 19.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 22.
+
+```reaction
+when Reflecting.edit (chapter, story, text, user, page), asked by Reflecting.Edit#2
+where
+  earlier, RequestBoundary.request (chapter, path: "/reflecting/edit", requestId, session, story, text)
+then
+  RequestBoundary.respond (page, requestId)
+```
+
+### Reflecting.GetJournal
+
+Authored path: `Reflecting.GetJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 32.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 35.
+
+```reaction
+when RequestBoundary.request (path: "/reflecting/getjournal", requestId, session)
+then
+  Sessioning.current (session)
+```
+
+### Reflecting.GetJournal#2
+
+Authored path: `Reflecting.GetJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 32.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 35.
+
+```reaction
+when Sessioning.current (session, user), asked by Reflecting.GetJournal
+then
+  Reflecting.getJournal (user)
+```
+
+### Reflecting.GetJournal#3
+
+Authored path: `Reflecting.GetJournal`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 32.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 35.
+
+```reaction
+when Reflecting.getJournal (user, pages), asked by Reflecting.GetJournal#2
+where
+  earlier, RequestBoundary.request (path: "/reflecting/getjournal", requestId, session)
+then
+  RequestBoundary.respond (pages, requestId)
+```
+
+### Reflecting.Read
+
+Authored path: `Reflecting.Read`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 25.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 29.
+
+```reaction
+when RequestBoundary.request (path: "/reflecting/read", requestId, session, story)
+then
+  Sessioning.current (session)
+```
+
+### Reflecting.Read#2
+
+Authored path: `Reflecting.Read`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 25.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 29.
+
+```reaction
+when Sessioning.current (session, user), asked by Reflecting.Read
+where
+  earlier, RequestBoundary.request (path: "/reflecting/read", requestId, session, story)
+then
+  Reflecting.read (story, user)
+```
+
+### Reflecting.Read#3
+
+Authored path: `Reflecting.Read`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 25.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 29.
+
+```reaction
+when Reflecting.read (story, user, page), asked by Reflecting.Read#2
+where
+  earlier, RequestBoundary.request (path: "/reflecting/read", requestId, session, story)
+then
+  RequestBoundary.respond (page, requestId)
+```
+
+### Reflecting.Write
+
+Authored path: `Reflecting.Write`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 12.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 16.
+
+```reaction
+when RequestBoundary.request (chapter, path: "/reflecting/write", requestId, session, story, text)
+then
+  Sessioning.current (session)
+```
+
+### Reflecting.Write#2
+
+Authored path: `Reflecting.Write`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 12.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 16.
+
+```reaction
+when Sessioning.current (session, user), asked by Reflecting.Write
+where
+  earlier, RequestBoundary.request (chapter, path: "/reflecting/write", requestId, session, story, text)
+then
+  Reflecting.write (chapter, story, text, user)
+```
+
+### Reflecting.Write#3
+
+Authored path: `Reflecting.Write`.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 12.
+- Covered by [Reflecting](../design/compositions/Reflecting.md), line 16.
+
+```reaction
+when Reflecting.write (chapter, story, text, user, page), asked by Reflecting.Write#2
+where
+  earlier, RequestBoundary.request (chapter, path: "/reflecting/write", requestId, session, story, text)
+then
+  RequestBoundary.respond (page, requestId)
+```
+
 ### Sessions.CurrentAccount.CurrentUser
 
 Authored path: `Sessions.CurrentAccount.CurrentUser`.
@@ -819,6 +1052,11 @@ not listed here have no explicit input contract.
 - `/interests/preference` — requires `session`, `subject`, `status`
 - `/interests/preferences` — requires `session`
 - `/interests/topics` — requires `session`
+- `/reflecting/createjournal` — requires `session`
+- `/reflecting/edit` — requires `session`, `story`, `chapter`, `text`
+- `/reflecting/getjournal` — requires `session`
+- `/reflecting/read` — requires `session`, `story`
+- `/reflecting/write` — requires `session`, `story`, `chapter`, `text`
 - `/stories/continue` — requires `session`, `story`, `answer`
 - `/stories/get` — requires `session`, `story`
 - `/stories/start` — requires `session`, `activity`
