@@ -1,25 +1,18 @@
 
 import { createGateway } from "@mit-sdg/sync-engine/boundary";
 import { createHttpHandler } from "@mit-sdg/sync-engine-http/handler";
-
 import { assembleApplication } from "./assembly.ts";
 import { seedCatalog } from "./catalog.ts";
 import { db } from "./db.ts";
 import { policy } from "./http.ts";
 import { ApplicationPersistence } from "./persistence.ts";
+import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
 
 const application = assembleApplication();
 const persistence = new ApplicationPersistence(db);
 
-// Restore existing catalog IDs, preferences, stories,
-// chapters, and exploration progress from MongoDB.
 const restored = await persistence.restore(application);
-
-// Seed missing predefined activities without replacing
-// IDs belonging to previously saved stories.
 await seedCatalog(application);
-
-// Persist the initial catalog as well.
 await persistence.save(application);
 
 console.log(
@@ -34,6 +27,8 @@ const httpApi = createHttpHandler({
   policy,
 });
 
+const progressiveHttp = createProgressiveHttpHandler(application, db, persistence);
+
 const persistentPaths = new Set([
   "/api/interests/preference",
   "/api/stories/start",
@@ -41,16 +36,25 @@ const persistentPaths = new Set([
   "/api/explorations/complete",
 ]);
 
-async function api(request: Request): Promise<Response> {
-  const response = await httpApi(request);
+const progressivePaths = new Set([
+  "/api/stories/progressive/get",
+  "/api/stories/progressive/start",
+  "/api/stories/progressive/choice",
+  "/api/stories/progressive/reflection/get",
+  "/api/stories/progressive/reflection/save",
+  "/api/stories/progressive/next",
+]);
 
+async function api(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname;
 
-  if (
-    request.method !== "POST" ||
-    !persistentPaths.has(path) ||
-    !response.ok
-  ) {
+  // Progressive HTTP handler persists its own mutations.
+  if (progressivePaths.has(path)) return progressiveHttp(request);
+
+  // Existing sync-engine API.
+  const response = await httpApi(request);
+
+  if (request.method !== "POST" || !persistentPaths.has(path) || !response.ok) {
     return response;
   }
 
@@ -58,19 +62,10 @@ async function api(request: Request): Promise<Response> {
     await persistence.save(application);
     return response;
   } catch (error) {
-    console.error(
-      "Failed to save application state:",
-      error,
-    );
-
+    console.error("Failed to save application state:", error);
     return Response.json(
       { error: "PERSISTENCE_FAILED" },
-      {
-        status: 503,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
 }
@@ -84,28 +79,15 @@ const server = Bun.serve({
 
     "/health": async () => {
       try {
-        await db.command(
-          { ping: 1 },
-          { timeoutMS: 3000 },
-        );
-
+        await db.command({ ping: 1 }, { timeoutMS: 3000 });
         return Response.json(
           { status: "ok" },
-          {
-            headers: {
-              "Cache-Control": "no-store",
-            },
-          },
+          { headers: { "Cache-Control": "no-store" } },
         );
       } catch {
         return Response.json(
           { status: "unavailable" },
-          {
-            status: 503,
-            headers: {
-              "Cache-Control": "no-store",
-            },
-          },
+          { status: 503, headers: { "Cache-Control": "no-store" } },
         );
       }
     },
