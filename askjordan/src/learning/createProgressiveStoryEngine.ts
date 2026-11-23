@@ -1,38 +1,26 @@
 
-import type { ReflectingConcept } from "../concepts/Reflecting.ts";
+import type {
+  ReflectingConcept,
+} from "../concepts/Reflecting.ts";
+
+import {
+  createProgressiveGenerator,
+} from "../ai/createProgressiveGenerator.ts";
 
 import {
   ProgressiveStoryEngine,
   type ProgressiveContentGenerator,
 } from "./ProgressiveStoryEngine.ts";
 
-const unavailableGenerator: ProgressiveContentGenerator = {
-  async beginChapter() {
-    throw new Error(
-      "Progressive content generation is not configured.",
-    );
-  },
-
-  async afterFirstChoice() {
-    throw new Error(
-      "Progressive content generation is not configured.",
-    );
-  },
-
-  async afterSecondChoice() {
-    throw new Error(
-      "Progressive content generation is not configured.",
-    );
-  },
-};
-
 export function createProgressiveStoryEngine(
   reflecting: ReflectingConcept,
-  generator: ProgressiveContentGenerator =
-    unavailableGenerator,
+  generator?: ProgressiveContentGenerator,
 ): ProgressiveStoryEngine {
+  const contentGenerator =
+    generator ?? createProgressiveGenerator();
+
   return new ProgressiveStoryEngine(
-    generator,
+    contentGenerator,
 
     async ({ user, story, chapter }) => {
       const { entry } = await reflecting.get({
