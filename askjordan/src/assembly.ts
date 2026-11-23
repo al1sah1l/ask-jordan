@@ -6,6 +6,7 @@ import { composition as accounts } from "./compositions/Accounts.ts";
 import { composition as sessions } from "./compositions/Sessions.ts";
 import { composition as explorationComposition } from "./compositions/ExplorationFlow.ts";
 import { composition as interestApi } from "./compositions/InterestApi.ts";
+import { composition as reflectingComposition } from "./compositions/Reflecting.ts";
 
 import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
@@ -150,6 +151,7 @@ export function assembleApplication(
       Accounts: accounts,
       AskJordan: explorationComposition,
       InterestApi: interestApi,
+      Reflecting: reflectingComposition,
     },
   });
 

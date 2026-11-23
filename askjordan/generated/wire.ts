@@ -150,6 +150,58 @@ export type AskJordanWire = {
     };
     error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
   };
+  "/reflecting/createjournal": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "journal": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["createJournal"]>>, ["journal"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "JOURNAL_CREATED" | "UNKNOWN_SESSION" };
+  };
+  "/reflecting/edit": {
+    input: {
+      "chapter": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["edit"]>[0], ["chapter"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["edit"]>[0], ["story"]>>;
+      "text": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["edit"]>[0], ["text"]>>;
+    };
+    output: {
+      "page": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["edit"]>>, ["page"]>>;
+    };
+    error: { error: AppWideError | "EDIT_AMBIGUOUS_PAGE" | "EDIT_INVALID_ENTRY" | "EDIT_INVALID_REFERENCE" | "EDIT_NO_JOURNAL" | "EDIT_NO_PAGE" | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/reflecting/getjournal": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "pages": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["getJournal"]>>, ["pages"]>>;
+    };
+    error: { error: AppWideError | "GET_JOURNAL_NOT_FOUND" | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
+  "/reflecting/read": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["read"]>[0], ["story"]>>;
+    };
+    output: {
+      "page": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["read"]>>, ["page"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "READ_AMBIGUOUS_PAGE" | "READ_INVALID_REFERENCE" | "READ_NO_JOURNAL" | "READ_NO_PAGE" | "READ_NO_STORY" | "UNKNOWN_SESSION" };
+  };
+  "/reflecting/write": {
+    input: {
+      "chapter": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["write"]>[0], ["chapter"]>>;
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+      "story": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["write"]>[0], ["story"]>>;
+      "text": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Reflecting"]["write"]>[0], ["text"]>>;
+    };
+    output: {
+      "page": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Reflecting"]["write"]>>, ["page"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" | "WRITE_INVALID_ENTRY" | "WRITE_NO_JOURNAL" | "WRITE_PAGE_EXISTS" };
+  };
   "/stories/continue": {
     input: {
       "answer": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["continueStory"]>[0], ["answer"]>>;
