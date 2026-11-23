@@ -36,6 +36,36 @@ export type AskJordanOverrides = Partial<{
   Reflecting: ReflectingConcept;
 }>;
 
+export type PersistableConcepts = {
+  interests: InterestCollectionConcept;
+  stories: StoryGenerationConcept;
+  explorations: ExplorationTrackingConcept;
+};
+
+/**
+ * Each assembled application has its own concept instances.
+ * WeakMap lets persistence access the underlying instances
+ * without going through the sync-engine action proxy.
+ */
+const persistenceInstances = new WeakMap<
+  object,
+  PersistableConcepts
+>();
+
+export function getPersistenceConcepts(
+  application: object,
+): PersistableConcepts {
+  const instances = persistenceInstances.get(application);
+
+  if (!instances) {
+    throw new Error(
+      "Persistence concepts are unavailable for this application.",
+    );
+  }
+
+  return instances;
+}
+
 export function assembleApplication(
   databaseOrOverrides: Db | AskJordanOverrides = db,
   clock: () => Date = () => new Date(),
@@ -56,7 +86,6 @@ export function assembleApplication(
     ...testOverrides,
   };
 
-  // Share the same catalog instance with StoryGeneration.
   const interestCollection =
     overrides.InterestCollection ??
     new InterestCollectionConcept();
@@ -67,10 +96,9 @@ export function assembleApplication(
       undefined,
       undefined,
       (activityId) => {
-        const activity =
-          interestCollection
-            ._activities({})
-            .find((item) => item.activity === activityId);
+        const activity = interestCollection
+          ._activities({})
+          .find((item) => item.activity === activityId);
 
         if (!activity) {
           throw new CatalogEntryNotFound(
@@ -78,27 +106,53 @@ export function assembleApplication(
           );
         }
 
-        // Give the AI meaningful context instead of a UUID.
         return `${activity.name} — ${activity.description}`;
       },
     );
 
-  return assemble({
+  const explorationTracking =
+    overrides.ExplorationTracking ??
+    new ExplorationTrackingConcept();
+
+  const application = assemble({
     conceptSet: applicationConceptSet,
 
     instances: {
-      Authenticating: new AuthenticatingConcept(database),
-      Sessioning: new SessioningConcept(database, clock),
-      Account: new AccountConcept(database),
-      AvatarCustomizing: new AvatarCustomizingConcept(database),
+      Authenticating:
+        overrides.Authenticating ??
+        new AuthenticatingConcept(database),
+
+      Sessioning:
+        overrides.Sessioning ??
+        new SessioningConcept(database, clock),
+
+      Account:
+        overrides.Account ??
+        new AccountConcept(database),
+
+      AvatarCustomizing:
+        overrides.AvatarCustomizing ??
+        new AvatarCustomizingConcept(database),
 
       InterestCollection: interestCollection,
+<<<<<<< HEAD
       ExplorationTracking: new ExplorationTrackingConcept(),
       InterestGeneration: new InterestGenerationConcept(),
       StoryGeneration: storyGeneration,
       Reflecting: new ReflectingConcept(),
+||||||| c6167fc
+      ExplorationTracking: new ExplorationTrackingConcept(),
+      InterestGeneration: new InterestGenerationConcept(),
+      StoryGeneration: storyGeneration,
+=======
+      ExplorationTracking: explorationTracking,
+>>>>>>> acc63b617cff8437a35f37fec240a30e7a1fd3c9
 
-      ...overrides,
+      InterestGeneration:
+        overrides.InterestGeneration ??
+        new InterestGenerationConcept(),
+
+      StoryGeneration: storyGeneration,
     },
 
     composition: {
@@ -109,4 +163,12 @@ export function assembleApplication(
       Reflecting: reflectingComposition,
     },
   });
+
+  persistenceInstances.set(application, {
+    interests: interestCollection,
+    stories: storyGeneration,
+    explorations: explorationTracking,
+  });
+
+  return application;
 }

@@ -2,13 +2,13 @@
 # Interest API
 
 The Interest API lets authenticated students browse activities,
-record their interests, and explore stories.
+record interests, and explore personalized stories.
 
 Every endpoint requires a valid session. The session is resolved
 through Sessioning.current to obtain the authenticated user.
 
-A frontend client cannot provide a different user identifier
-to perform actions on another student's behalf.
+The frontend cannot provide a different user identifier to
+access another student's data.
 
 ## Browsing interests
 
@@ -44,15 +44,20 @@ for a selected activity.
 The student's profile description is retrieved from Account
 and supplied as the story's personalization context.
 
-The frontend does not supply the user's identity or
-personalization context.
-
-When a story is successfully generated, the existing
+When a story is generated, the existing
 StoryCreatedStartsExploration reaction starts its exploration.
 
 A student
 [retrieves their story](reaction:InterestApi.StoryExploring.GetStory)
 using StoryGeneration.getStory.
+
+A student
+[retrieves their list of stories](reaction:InterestApi.StoryExploring.GetStories)
+using StoryGeneration.getStories.
+
+Each story summary includes the original Activity identifier.
+This allows the frontend to reopen a story without generating
+a duplicate.
 
 A student
 [continues their story](reaction:InterestApi.StoryExploring.ContinueStory)
@@ -62,25 +67,39 @@ A student
 [retrieves their exploration history](reaction:InterestApi.StoryExploring.GetExplorationHistory)
 through the [explorations for a user](former:InterestApi.StoryExploring.ExplorationHistory).
 
-Only stories and explorations associated with the
-authenticated user are accessible.
+Only stories and explorations belonging to the authenticated
+student can be retrieved or changed.
 
 ```endpoints
 InterestApi.StoryExploring.StartStory at /stories/start
 InterestApi.StoryExploring.GetStory at /stories/get
+InterestApi.StoryExploring.GetStories at /stories/list
 InterestApi.StoryExploring.ContinueStory at /stories/continue
 InterestApi.StoryExploring.GetExplorationHistory at /explorations/history
 ```
 
+## Persistence
+
+InterestCollection, StoryGeneration, and ExplorationTracking
+remain independent concepts.
+
+The application persistence adapter stores and restores
+their state in MongoDB.
+
+The state is restored before catalog initialization, preserving
+existing Topic, Activity, Story, and Exploration identifiers.
+
+The browser retrieves saved preferences and story summaries
+after authentication. It does not use browser-local storage
+as the authoritative source for student data.
+
 ## Alpha scope
 
-For Alpha, the student can browse a predefined catalog,
-save their interests, and start and read a story.
+For Alpha, students can browse a predefined catalog, save
+interests, create and continue stories, and reopen stories
+across application restarts.
 
-The story and exploration remain separate concepts.
+Reflection remains a separate concept integration.
 
-The reflection interface is connected by the Reflecting
-concept owner.
-
-The frontend sends session cookies with each request
-and does not choose the account identifier.
+The frontend sends session cookies with requests and
+does not choose the account identifier.

@@ -12,10 +12,6 @@ import {
 
 type Screen = "auth" | "profile" | "activities" | "story";
 
-// ------------------------------
-// Application state
-// ------------------------------
-
 const screen = ref<Screen>("auth");
 
 const account = ref<string | null>(null);
@@ -31,26 +27,16 @@ const activities = ref<Activity[]>([]);
 const preferences = ref<Preference[]>([]);
 
 const search = ref("");
-
 const loading = ref(false);
 const initializing = ref(true);
 const error = ref("");
 const message = ref("");
 
-// ------------------------------
-// Story state
-// ------------------------------
-
 const selectedStory = ref<string | null>(null);
 const selectedActivityName = ref("");
 
-// Stories started during this frontend session.
-// Persistent story recovery will be added later.
+// This map is reconstructed from MongoDB-backed API data.
 const startedStories = ref<Record<string, string>>({});
-
-// ------------------------------
-// Computed properties
-// ------------------------------
 
 const filteredActivities = computed(() =>
   activities.value.filter((activity) =>
@@ -63,15 +49,13 @@ const filteredActivities = computed(() =>
 const savedSubjects = computed(
   () =>
     new Set(
-      preferences.value.map(
-        (preference) => preference.subject,
-      ),
+      preferences.value
+        .filter((preference) =>
+          preference.status === "interested",
+        )
+        .map((preference) => preference.subject),
     ),
 );
-
-// ------------------------------
-// Error and loading handling
-// ------------------------------
 
 async function run(action: () => Promise<void>) {
   if (loading.value) return;
@@ -92,24 +76,27 @@ async function run(action: () => Promise<void>) {
   }
 }
 
-// ------------------------------
-// Catalog
-// ------------------------------
-
 async function loadCatalog() {
-  const [activityResponse, preferenceResponse] =
-    await Promise.all([
-      api.getActivities(),
-      api.getPreferences(),
-    ]);
+  const [
+    activitiesResponse,
+    preferencesResponse,
+    storiesResponse,
+  ] = await Promise.all([
+    api.getActivities(),
+    api.getPreferences(),
+    api.getStories(),
+  ]);
 
-  activities.value = activityResponse.activities;
-  preferences.value = preferenceResponse.preferences;
+  activities.value = activitiesResponse.activities;
+  preferences.value = preferencesResponse.preferences;
+
+  startedStories.value = Object.fromEntries(
+    storiesResponse.stories.map((story) => [
+      story.activity,
+      story.story,
+    ]),
+  );
 }
-
-// ------------------------------
-// Profile
-// ------------------------------
 
 async function loadProfileAndNavigate() {
   try {
@@ -120,7 +107,6 @@ async function loadProfileAndNavigate() {
     profileAbout.value = result.about;
 
     await loadCatalog();
-
     screen.value = "activities";
   } catch (err) {
     if (
@@ -131,7 +117,6 @@ async function loadProfileAndNavigate() {
       profile.value = null;
       profileName.value = "";
       profileAbout.value = "";
-
       screen.value = "profile";
       return;
     }
@@ -156,18 +141,11 @@ async function saveProfile() {
     await loadCatalog();
 
     screen.value = "activities";
-
     message.value = "Your profile is ready! Let's explore!";
   });
 }
 
-// ------------------------------
-// Authentication
-// ------------------------------
-
-async function authenticate(
-  mode: "register" | "sign-in",
-) {
+async function authenticate(mode: "register" | "sign-in") {
   await run(async () => {
     const result =
       mode === "register"
@@ -204,20 +182,15 @@ async function signOut() {
 
     activities.value = [];
     preferences.value = [];
-
-    search.value = "";
+    startedStories.value = {};
 
     selectedStory.value = null;
     selectedActivityName.value = "";
-    startedStories.value = {};
+    search.value = "";
 
     screen.value = "auth";
   });
 }
-
-// ------------------------------
-// Interests
-// ------------------------------
 
 async function saveInterest(activity: Activity) {
   await run(async () => {
@@ -234,19 +207,15 @@ async function saveInterest(activity: Activity) {
   });
 }
 
-// ------------------------------
-// Stories
-// ------------------------------
-
 async function openStory(activity: Activity) {
   await run(async () => {
-    const existingStory =
-      startedStories.value[activity.activity];
-
     selectedActivityName.value = activity.name;
 
-    if (existingStory) {
-      selectedStory.value = existingStory;
+    const existing =
+      startedStories.value[activity.activity];
+
+    if (existing) {
+      selectedStory.value = existing;
       screen.value = "story";
       return;
     }
@@ -265,19 +234,20 @@ async function openStory(activity: Activity) {
   });
 }
 
-function backToActivities() {
+async function backToActivities() {
   selectedStory.value = null;
   selectedActivityName.value = "";
-
   error.value = "";
   message.value = "";
 
   screen.value = "activities";
-}
 
-// ------------------------------
-// Restore login session
-// ------------------------------
+  await run(async () => {
+    // Refresh the source of truth when returning
+    // from the story reader.
+    await loadCatalog();
+  });
+}
 
 onMounted(async () => {
   try {
@@ -293,7 +263,7 @@ onMounted(async () => {
       error.value =
         err instanceof Error
           ? err.message
-          : "Could not load your profile.";
+          : "Could not load your account.";
     }
   } finally {
     initializing.value = false;
@@ -303,17 +273,13 @@ onMounted(async () => {
 
 <template>
   <div class="app-shell">
-    <!-- HEADER -->
     <header class="site-header">
       <div class="brand">
         <span class="brand-icon">✦</span>
         Ask Jordan
       </div>
 
-      <div
-        v-if="account"
-        class="account-menu"
-      >
+      <div v-if="account" class="account-menu">
         <span>
           Hi, {{ profile?.name || account }}!
         </span>
@@ -329,7 +295,6 @@ onMounted(async () => {
     </header>
 
     <main class="main-content">
-      <!-- GLOBAL MESSAGES -->
       <div
         v-if="error"
         class="notification error"
@@ -346,7 +311,6 @@ onMounted(async () => {
         {{ message }}
       </div>
 
-      <!-- INITIAL LOADING -->
       <section
         v-if="initializing"
         class="initial-loading"
@@ -355,7 +319,7 @@ onMounted(async () => {
         <p>Just a moment!</p>
       </section>
 
-      <!-- AUTHENTICATION SCREEN -->
+      <!-- LOGIN / REGISTER -->
       <section
         v-else-if="screen === 'auth'"
         class="welcome"
@@ -388,9 +352,7 @@ onMounted(async () => {
             to start exploring.
           </p>
 
-          <label for="username">
-            Username
-          </label>
+          <label for="username">Username</label>
 
           <input
             id="username"
@@ -400,9 +362,7 @@ onMounted(async () => {
             required
           />
 
-          <label for="password">
-            Password
-          </label>
+          <label for="password">Password</label>
 
           <input
             id="password"
@@ -432,7 +392,7 @@ onMounted(async () => {
         </form>
       </section>
 
-      <!-- PROFILE SCREEN -->
+      <!-- PROFILE -->
       <section
         v-else-if="screen === 'profile'"
         class="profile-page"
@@ -441,9 +401,7 @@ onMounted(async () => {
           FIRST, LET'S GET TO KNOW YOU
         </span>
 
-        <h1>
-          Tell us a little about yourself!
-        </h1>
+        <h1>Tell us a little about yourself!</h1>
 
         <p class="page-description">
           Your answers help us create adventures
@@ -481,9 +439,7 @@ onMounted(async () => {
           <button
             class="button button-primary"
             type="submit"
-            :disabled="
-              loading || !profileName.trim()
-            "
+            :disabled="loading || !profileName.trim()"
           >
             {{
               loading
@@ -494,7 +450,7 @@ onMounted(async () => {
         </form>
       </section>
 
-      <!-- ACTIVITIES SCREEN -->
+      <!-- ACTIVITIES -->
       <section
         v-else-if="screen === 'activities'"
         class="explore-page"
@@ -503,16 +459,13 @@ onMounted(async () => {
           EXPLORE YOUR POSSIBILITIES
         </span>
 
-        <h1>
-          What sparks your curiosity?
-        </h1>
+        <h1>What sparks your curiosity?</h1>
 
         <p class="page-description">
           Try something new. You might discover
           a passion you didn't know you had!
         </p>
 
-        <!-- SEARCH -->
         <div class="search-bar">
           <span>⌕</span>
 
@@ -524,17 +477,13 @@ onMounted(async () => {
         </div>
 
         <div class="section-heading">
-          <h2>
-            Activities to explore
-          </h2>
+          <h2>Activities to explore</h2>
 
           <span>
-            {{ filteredActivities.length }}
-            activities
+            {{ filteredActivities.length }} activities
           </span>
         </div>
 
-        <!-- ACTIVITY CARDS -->
         <div class="activity-grid">
           <article
             v-for="activity in filteredActivities"
@@ -561,16 +510,11 @@ onMounted(async () => {
               }}
             </div>
 
-            <h3>
-              {{ activity.name }}
-            </h3>
+            <h3>{{ activity.name }}</h3>
 
-            <p>
-              {{ activity.description }}
-            </p>
+            <p>{{ activity.description }}</p>
 
             <div class="activity-card-actions">
-              <!-- SAVE INTEREST -->
               <button
                 class="button"
                 :class="
@@ -591,16 +535,17 @@ onMounted(async () => {
                 }}
               </button>
 
-              <!-- START STORY -->
               <button
                 class="button button-primary"
                 :disabled="loading"
                 @click="openStory(activity)"
               >
                 {{
-                  startedStories[activity.activity]
-                    ? "Continue story →"
-                    : "Start adventure →"
+                  loading
+                    ? "Loading..."
+                    : startedStories[activity.activity]
+                      ? "Continue story →"
+                      : "Start adventure →"
                 }}
               </button>
             </div>

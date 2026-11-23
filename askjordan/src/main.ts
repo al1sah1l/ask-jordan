@@ -6,17 +6,74 @@ import { assembleApplication } from "./assembly.ts";
 import { seedCatalog } from "./catalog.ts";
 import { db } from "./db.ts";
 import { policy } from "./http.ts";
+import { ApplicationPersistence } from "./persistence.ts";
 
 const application = assembleApplication();
+const persistence = new ApplicationPersistence(db);
 
-// Populate topics and activities before accepting requests.
+// Restore existing catalog IDs, preferences, stories,
+// chapters, and exploration progress from MongoDB.
+const restored = await persistence.restore(application);
+
+// Seed missing predefined activities without replacing
+// IDs belonging to previously saved stories.
 await seedCatalog(application);
 
-const api = createHttpHandler({
+// Persist the initial catalog as well.
+await persistence.save(application);
+
+console.log(
+  restored
+    ? "Restored Ask Jordan application state from MongoDB."
+    : "Initialized new Ask Jordan application state.",
+);
+
+const httpApi = createHttpHandler({
   application,
   gateway: createGateway({ application }),
   policy,
 });
+
+const persistentPaths = new Set([
+  "/api/interests/preference",
+  "/api/stories/start",
+  "/api/stories/continue",
+  "/api/explorations/complete",
+]);
+
+async function api(request: Request): Promise<Response> {
+  const response = await httpApi(request);
+
+  const path = new URL(request.url).pathname;
+
+  if (
+    request.method !== "POST" ||
+    !persistentPaths.has(path) ||
+    !response.ok
+  ) {
+    return response;
+  }
+
+  try {
+    await persistence.save(application);
+    return response;
+  } catch (error) {
+    console.error(
+      "Failed to save application state:",
+      error,
+    );
+
+    return Response.json(
+      { error: "PERSISTENCE_FAILED" },
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
+}
 
 const server = Bun.serve({
   hostname: process.env.HOST ?? "127.0.0.1",

@@ -222,6 +222,15 @@ export type AskJordanWire = {
     };
     error: { error: AppWideError | "INVALID_INPUT" | "STORY_NOT_FOUND" | "UNKNOWN_SESSION" };
   };
+  "/stories/list": {
+    input: {
+      "session": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Sessioning"]["current"]>[0], ["session"]>>;
+    };
+    output: {
+      "stories": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["getStories"]>>, ["stories"]>>;
+    };
+    error: { error: AppWideError | "INVALID_INPUT" | "UNKNOWN_SESSION" };
+  };
   "/stories/start": {
     input: {
       "activity": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["StoryGeneration"]["generateStory"]>[0], ["activity"]>>;

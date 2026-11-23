@@ -1,11 +1,4 @@
 
-/**
- * Ask Jordan — Frontend API Client
- *
- * All requests use POST and the existing
- * authentication session cookie.
- */
-
 export interface Profile {
   profile: string;
   name: string;
@@ -34,6 +27,12 @@ export interface Chapter {
   suggestedActivity?: string;
 }
 
+export interface StorySummary {
+  story: string;
+  user: string;
+  activity: string;
+}
+
 export interface Exploration {
   exploration: string;
   story: string;
@@ -46,12 +45,6 @@ export interface Preference {
   status: string;
 }
 
-/**
- * Shared HTTP helper.
- *
- * The Vite development server proxies /api
- * to the Bun backend.
- */
 async function post<T>(
   path: string,
   body: Record<string, unknown> = {},
@@ -81,13 +74,8 @@ async function post<T>(
   return result as T;
 }
 
-/**
- * API methods grouped by functionality.
- */
 export const api = {
-  // ----------------------------------
   // Authentication
-  // ----------------------------------
 
   register(username: string, password: string) {
     return post<{ account: string }>(
@@ -111,9 +99,7 @@ export const api = {
     return post<{ ended: string }>("/auth/sign-out");
   },
 
-  // ----------------------------------
   // Profile
-  // ----------------------------------
 
   getProfile() {
     return post<Profile>("/account/profile");
@@ -133,9 +119,7 @@ export const api = {
     );
   },
 
-  // ----------------------------------
-  // Interest Catalog
-  // ----------------------------------
+  // Interests
 
   getTopics() {
     return post<{ topics: Topic[] }>(
@@ -162,9 +146,7 @@ export const api = {
     );
   },
 
-  // ----------------------------------
-  // Story Generation
-  // ----------------------------------
+  // Stories
 
   startStory(activity: string) {
     return post<{ story: string; chapter: string }>(
@@ -180,6 +162,12 @@ export const api = {
     );
   },
 
+  getStories() {
+    return post<{ stories: StorySummary[] }>(
+      "/stories/list",
+    );
+  },
+
   continueStory(story: string, answer: string) {
     return post<{ chapter: string }>(
       "/stories/continue",
@@ -187,9 +175,7 @@ export const api = {
     );
   },
 
-  // ----------------------------------
-  // Exploration Tracking
-  // ----------------------------------
+  // Explorations
 
   getExplorations() {
     return post<{ explorations: Exploration[] }>(
