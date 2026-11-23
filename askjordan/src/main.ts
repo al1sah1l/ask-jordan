@@ -7,6 +7,7 @@ import { seedCatalog } from "./catalog.ts";
 import { db } from "./db.ts";
 import { policy } from "./http.ts";
 import { ApplicationPersistence } from "./persistence.ts";
+import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
 
 const application = assembleApplication();
 const persistence = new ApplicationPersistence(db);
@@ -34,6 +35,8 @@ const httpApi = createHttpHandler({
   policy,
 });
 
+const progressiveHttp = createProgressiveHttpHandler(application, db);
+
 const persistentPaths = new Set([
   "/api/interests/preference",
   "/api/stories/start",
@@ -42,9 +45,13 @@ const persistentPaths = new Set([
 ]);
 
 async function api(request: Request): Promise<Response> {
-  const response = await httpApi(request);
-
   const path = new URL(request.url).pathname;
+
+  if (path === "/api/stories/progressive/get") {
+    return progressiveHttp(request);
+  }
+  
+  const response = await httpApi(request);
 
   if (
     request.method !== "POST" ||
