@@ -11,7 +11,6 @@ import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
 const application = assembleApplication();
 const persistence = new ApplicationPersistence(db);
 
-// Restore existing stories, profiles, preferences, and exploration progress.
 const restored = await persistence.restore(application);
 await seedCatalog(application);
 await persistence.save(application);
@@ -30,7 +29,6 @@ const httpApi = createHttpHandler({
 
 const progressiveHttp = createProgressiveHttpHandler(application, db, persistence);
 
-// Existing sync-engine paths that require persistence.
 const persistentPaths = new Set([
   "/api/interests/preference",
   "/api/stories/start",
@@ -38,18 +36,22 @@ const persistentPaths = new Set([
   "/api/explorations/complete",
 ]);
 
-// Progressive mutations are persisted inside progressiveHttp.
 const progressivePaths = new Set([
   "/api/stories/progressive/get",
   "/api/stories/progressive/start",
   "/api/stories/progressive/choice",
+  "/api/stories/progressive/reflection/get",
+  "/api/stories/progressive/reflection/save",
+  "/api/stories/progressive/next",
 ]);
 
 async function api(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname;
 
+  // Progressive HTTP handler persists its own mutations.
   if (progressivePaths.has(path)) return progressiveHttp(request);
 
+  // Existing sync-engine API.
   const response = await httpApi(request);
 
   if (request.method !== "POST" || !persistentPaths.has(path) || !response.ok) {
@@ -61,7 +63,6 @@ async function api(request: Request): Promise<Response> {
     return response;
   } catch (error) {
     console.error("Failed to save application state:", error);
-
     return Response.json(
       { error: "PERSISTENCE_FAILED" },
       { status: 503, headers: { "Cache-Control": "no-store" } },
@@ -79,7 +80,6 @@ const server = Bun.serve({
     "/health": async () => {
       try {
         await db.command({ ping: 1 }, { timeoutMS: 3000 });
-
         return Response.json(
           { status: "ok" },
           { headers: { "Cache-Control": "no-store" } },
