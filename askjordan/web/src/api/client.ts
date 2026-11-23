@@ -53,6 +53,7 @@ export interface StorySummary {
   story: string;
   user: string;
   activity: string;
+  format?: "legacy" | "progressive";
 }
 
 export interface Exploration {
@@ -65,6 +66,37 @@ export interface Preference {
   preference: string;
   subject: string;
   status: string;
+}
+
+export type ProgressiveStage = "first-choice" | "second-choice" | "awaiting-reflection" | "reflected";
+
+export interface ProgressiveQuestion {
+  prompt: string;
+  options?: string[];
+}
+
+export interface ProgressiveChapter {
+  chapter: string;
+  story: string;
+  position: number;
+  theory: { topic: string; explanation: string; keyTerms: string[] };
+  introduction: string;
+  firstQuestion: ProgressiveQuestion;
+  firstDecision?: { question: string; answer: string };
+  secondScene?: string;
+  secondQuestion?: ProgressiveQuestion;
+  secondDecision?: { question: string; answer: string };
+  conclusion?: string;
+  practicalChallenge?: string;
+  stage: ProgressiveStage;
+  reflectionPage?: string;
+}
+
+export interface ProgressiveStoryResponse {
+  story: string;
+  activity: string;
+  format: "progressive";
+  chapters: ProgressiveChapter[];
 }
 
 export class ApiError extends Error {
@@ -80,10 +112,11 @@ export function friendlyError(error: unknown, fallback: string): string {
 
 function messageFor(code: string, status: number): string {
   if (status === 401) return "Your session has ended or your sign-in details were not accepted. Please sign in again.";
+
   const messages: Record<string, string> = {
     INVALID_REQUEST: "Please check the details you entered and try again.",
     INVALID_INPUT: "Some required details are missing. Please check the form and try again.",
-    CONFLICT: "This already exists. Reload your saved information or choose another username.",
+    CONFLICT: "This has changed or already exists. Reload your saved information.",
     NOT_FOUND: "We couldn't find the saved information. Please try loading it again.",
     NO_PROFILE: "Please create your profile before starting an adventure.",
     BLANK_NAME: "Please enter a display name.",
@@ -99,12 +132,18 @@ function messageFor(code: string, status: number): string {
     SAVE_TEXT_TOO_LONG: "Keep your reflection within 5,000 characters.",
     REFLECTION_UNAVAILABLE: "Your saved work is unavailable. Please try again.",
     STORY_NOT_FOUND: "This story isn't available to your account. Return to activities and try again.",
+    GENERATION_FAILED: "We couldn't generate your story right now. Please retry.",
+    PERSISTENCE_FAILED: "We couldn't confirm that your progress was saved. Reload before trying again.",
+    INTERNAL_ERROR: "Something went wrong. Please try again.",
+    FORBIDDEN: "This request is not allowed from this page.",
   };
+
   return messages[code] ?? "We couldn't complete that request. Please try again.";
 }
 
 async function post<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   let response: Response;
+
   try {
     response = await fetch(`/api${path}`, {
       method: "POST",
@@ -115,38 +154,38 @@ async function post<T>(path: string, body: Record<string, unknown> = {}): Promis
   } catch {
     throw new ApiError("NETWORK_ERROR", 0, "We couldn't connect. Check your connection, then try again.");
   }
+
   let result: unknown;
+
   try {
     result = await response.json();
   } catch {
     throw new ApiError("INVALID_RESPONSE", response.status, "The server sent an unreadable response. Please try loading again.");
   }
+
   if (!response.ok) {
     const code = typeof result === "object" && result !== null && "error" in result && typeof result.error === "string"
       ? result.error : "SERVER_ERROR";
     throw new ApiError(code, response.status, messageFor(code, response.status));
   }
+
   if (typeof result !== "object" || result === null || Array.isArray(result)) {
     throw new ApiError("INVALID_RESPONSE", response.status, "The server sent an incomplete response. Please try loading again.");
   }
+
   return result as T;
 }
 
-export const api = {
-  // Authentication
+// Progressive stories are opt-in until frontend and backend are fully verified.
+export const progressiveEnabled = import.meta.env.VITE_PROGRESSIVE_STORIES === "true";
 
+export const api = {
   register(username: string, password: string) {
-    return post<{ account: string }>(
-      "/auth/register",
-      { username, password },
-    );
+    return post<{ account: string }>("/auth/register", { username, password });
   },
 
   signIn(username: string, password: string) {
-    return post<{ account: string }>(
-      "/auth/sign-in",
-      { username, password },
-    );
+    return post<{ account: string }>("/auth/sign-in", { username, password });
   },
 
   currentUser() {
@@ -157,80 +196,52 @@ export const api = {
     return post<{ ended: string }>("/auth/sign-out");
   },
 
-  // Profile
-
   getProfile() {
     return post<Profile>("/account/profile");
   },
 
   createProfile(name: string, about: string) {
-    return post<{ profile: string }>(
-      "/account/create",
-      { name, about },
-    );
+    return post<{ profile: string }>("/account/create", { name, about });
   },
 
   updateProfile(name: string, about: string) {
-    return post<{ profile: string }>(
-      "/account/update",
-      { name, about },
-    );
+    return post<{ profile: string }>("/account/update", { name, about });
   },
 
-  // Interests
-
   getTopics() {
-    return post<{ topics: Topic[] }>(
-      "/interests/topics",
-    );
+    return post<{ topics: Topic[] }>("/interests/topics");
   },
 
   getActivities() {
-    return post<{ activities: Activity[] }>(
-      "/interests/activities",
-    );
+    return post<{ activities: Activity[] }>("/interests/activities");
   },
 
   getPreferences() {
-    return post<{ preferences: Preference[] }>(
-      "/interests/preferences",
-    );
+    return post<{ preferences: Preference[] }>("/interests/preferences");
   },
 
   setPreference(subject: string, status: string) {
-    return post<{ preference: string }>(
-      "/interests/preference",
-      { subject, status },
-    );
+    return post<{ preference: string }>("/interests/preference", { subject, status });
   },
 
-  // Stories
-
+  // New adventures use progressive mode only when explicitly enabled.
   startStory(activity: string) {
-    return post<{ story: string; chapter: string }>(
-      "/stories/start",
-      { activity },
-    );
+    if (progressiveEnabled) {
+      return post<{ story: string; chapter: string }>("/stories/progressive/start", { activity });
+    }
+    return post<{ story: string; chapter: string }>("/stories/start", { activity });
   },
 
   getStory(story: string) {
-    return post<{ chapters: Chapter[] }>(
-      "/stories/get",
-      { story },
-    );
+    return post<{ chapters: Chapter[] }>("/stories/get", { story });
   },
 
   getStories() {
-    return post<{ stories: StorySummary[] }>(
-      "/stories/list",
-    );
+    return post<{ stories: StorySummary[] }>("/stories/list");
   },
 
   continueStory(story: string, answer: string, expectedChapter?: string) {
-    return post<{ chapter: string }>(
-      "/stories/continue",
-      { story, answer, expectedChapter },
-    );
+    return post<{ chapter: string }>("/stories/continue", { story, answer, expectedChapter });
   },
 
   getReflection(story: string) {
@@ -241,11 +252,32 @@ export const api = {
     return post<WorkResponse>("/stories/reflection/save", { story, text, images });
   },
 
-  // Explorations
+  // Progressive story flow.
+  getProgressiveStory(story: string) {
+    return post<ProgressiveStoryResponse>("/stories/progressive/get", { story });
+  },
+
+  submitProgressiveChoice(story: string, chapter: string, answer: string, expectedStage: "first-choice" | "second-choice") {
+    return post<{ story: string; chapter: string; stage: ProgressiveStage }>("/stories/progressive/choice", {
+      story, chapter, answer, expectedStage,
+    });
+  },
+
+  getProgressiveReflection(story: string, chapter: string) {
+    return post<{ entry: WorkEntry | null }>("/stories/progressive/reflection/get", { story, chapter });
+  },
+
+  saveProgressiveReflection(story: string, chapter: string, text: string, images: string[]) {
+    return post<{ story: string; chapter: string; page: string; stage: "reflected" }>(
+      "/stories/progressive/reflection/save", { story, chapter, text, images },
+    );
+  },
+
+  nextProgressiveChapter(story: string, chapter: string) {
+    return post<{ story: string; chapter: string; position: number }>("/stories/progressive/next", { story, chapter });
+  },
 
   getExplorations() {
-    return post<{ explorations: Exploration[] }>(
-      "/explorations/history",
-    );
+    return post<{ explorations: Exploration[] }>("/explorations/history");
   },
 };

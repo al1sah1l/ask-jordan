@@ -12,15 +12,15 @@ import { AccountConcept } from "./concepts/Account.ts";
 import { AuthenticatingConcept } from "./concepts/Authenticating.ts";
 import { AvatarCustomizingConcept } from "./concepts/AvatarCustomizing.ts";
 import { ExplorationTrackingConcept } from "./concepts/ExplorationTracking.ts";
-import {
-  InterestCollectionConcept,
-  CatalogEntryNotFound,
-} from "./concepts/InterestCollection.ts";
+import { InterestCollectionConcept, CatalogEntryNotFound } from "./concepts/InterestCollection.ts";
 import { InterestGenerationConcept } from "./concepts/InterestGeneration.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
 import { StoryGenerationConcept } from "./concepts/StoryGeneration.ts";
-
 import { ReflectingConcept } from "./concepts/Reflecting.ts";
+
+import { createProgressiveStoryEngine } from "./learning/createProgressiveStoryEngine.ts";
+import { createProgressiveGenerator } from "./ai/createProgressiveGenerator.ts";
+import type { ProgressiveContentGenerator, ProgressiveStoryEngine } from "./learning/ProgressiveStoryEngine.ts";
 
 import { applicationConceptSet } from "./concepts.ts";
 import { db } from "./db.ts";
@@ -35,35 +35,21 @@ export type AskJordanOverrides = Partial<{
   InterestGeneration: InterestGenerationConcept;
   StoryGeneration: StoryGenerationConcept;
   Reflecting: ReflectingConcept;
+  ProgressiveContentGenerator: ProgressiveContentGenerator;
 }>;
 
 export type PersistableConcepts = {
   interests: InterestCollectionConcept;
   stories: StoryGenerationConcept;
   explorations: ExplorationTrackingConcept;
+  progressive: ProgressiveStoryEngine;
 };
 
-/**
- * Each assembled application has its own concept instances.
- * WeakMap lets persistence access the underlying instances
- * without going through the sync-engine action proxy.
- */
-const persistenceInstances = new WeakMap<
-  object,
-  PersistableConcepts
->();
+const persistenceInstances = new WeakMap<object, PersistableConcepts>();
 
-export function getPersistenceConcepts(
-  application: object,
-): PersistableConcepts {
+export function getPersistenceConcepts(application: object): PersistableConcepts {
   const instances = persistenceInstances.get(application);
-
-  if (!instances) {
-    throw new Error(
-      "Persistence concepts are unavailable for this application.",
-    );
-  }
-
+  if (!instances) throw new Error("Persistence concepts are unavailable for this application.");
   return instances;
 }
 
@@ -72,80 +58,71 @@ export function assembleApplication(
   clock: () => Date = () => new Date(),
   testOverrides: AskJordanOverrides = {},
 ) {
-  const isDatabase =
-    "collection" in databaseOrOverrides &&
+  const isDatabase = "collection" in databaseOrOverrides &&
     typeof databaseOrOverrides.collection === "function";
 
-  const database = isDatabase
-    ? (databaseOrOverrides as Db)
-    : db;
+  const database = isDatabase ? databaseOrOverrides as Db : db;
 
   const overrides: AskJordanOverrides = {
-    ...(isDatabase
-      ? {}
-      : (databaseOrOverrides as AskJordanOverrides)),
+    ...(isDatabase ? {} : databaseOrOverrides as AskJordanOverrides),
     ...testOverrides,
   };
 
-  const interestCollection =
-    overrides.InterestCollection ??
-    new InterestCollectionConcept();
+  const interestCollection = overrides.InterestCollection ?? new InterestCollectionConcept();
+  const reflecting = overrides.Reflecting ?? new ReflectingConcept(database);
 
-  const storyGeneration =
-    overrides.StoryGeneration ??
-    new StoryGenerationConcept(
-      undefined,
-      undefined,
-      (activityId) => {
-        const activity = interestCollection
-          ._activities({})
-          .find((item) => item.activity === activityId);
+  // The database keeps stable Activity IDs, but the AI needs readable subjects.
+  function describeActivity(activityId: string): string {
+    const activity = interestCollection._activities({}).find(item => item.activity === activityId);
+    if (!activity) throw new CatalogEntryNotFound("The selected activity does not exist.");
+    return `${activity.name} — ${activity.description}`;
+  }
 
-        if (!activity) {
-          throw new CatalogEntryNotFound(
-            "The selected activity does not exist.",
-          );
-        }
+  const baseGenerator = overrides.ProgressiveContentGenerator ?? createProgressiveGenerator();
 
-        return `${activity.name} — ${activity.description}`;
-      },
-    );
+  // Translate the Activity ID into its catalog name before every AI request.
+  // The progressive engine still stores and compares the original Activity ID.
+  const progressiveGenerator: ProgressiveContentGenerator = {
+    beginChapter: input => baseGenerator.beginChapter({
+      ...input,
+      activity: describeActivity(input.activity),
+    }),
 
-  const explorationTracking =
-    overrides.ExplorationTracking ??
-    new ExplorationTrackingConcept();
+    afterFirstChoice: input => baseGenerator.afterFirstChoice({
+      ...input,
+      activity: describeActivity(input.activity),
+    }),
+
+    afterSecondChoice: input => baseGenerator.afterSecondChoice({
+      ...input,
+      activity: describeActivity(input.activity),
+    }),
+  };
+
+  const progressive = createProgressiveStoryEngine(reflecting, progressiveGenerator);
+
+  const storyGeneration = overrides.StoryGeneration ?? new StoryGenerationConcept(
+    undefined,
+    undefined,
+    describeActivity,
+    progressive,
+  );
+
+  const explorationTracking = overrides.ExplorationTracking ?? new ExplorationTrackingConcept();
 
   const application = assemble({
     conceptSet: applicationConceptSet,
-
     instances: {
-      Authenticating:
-        overrides.Authenticating ??
-        new AuthenticatingConcept(database),
-
-      Sessioning:
-        overrides.Sessioning ??
-        new SessioningConcept(database, clock),
-
-      Account:
-        overrides.Account ??
-        new AccountConcept(database),
-
-      AvatarCustomizing:
-        overrides.AvatarCustomizing ??
-        new AvatarCustomizingConcept(database),
-
+      Authenticating: overrides.Authenticating ?? new AuthenticatingConcept(database),
+      Sessioning: overrides.Sessioning ?? new SessioningConcept(database, clock),
+      Account: overrides.Account ?? new AccountConcept(database),
+      AvatarCustomizing: overrides.AvatarCustomizing ?? new AvatarCustomizingConcept(database),
       InterestCollection: interestCollection,
       ExplorationTracking: explorationTracking,
-
-      InterestGeneration:
-        overrides.InterestGeneration ??
-        new InterestGenerationConcept(),
-
+      InterestGeneration: overrides.InterestGeneration ?? new InterestGenerationConcept(),
       StoryGeneration: storyGeneration,
-      Reflecting: overrides.Reflecting ?? new ReflectingConcept(database),
+      Reflecting: reflecting,
     },
-
     composition: {
       Sessions: sessions,
       Accounts: accounts,
@@ -159,6 +136,7 @@ export function assembleApplication(
     interests: interestCollection,
     stories: storyGeneration,
     explorations: explorationTracking,
+    progressive,
   });
 
   return application;
