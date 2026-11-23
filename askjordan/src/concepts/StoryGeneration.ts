@@ -42,9 +42,18 @@ export class StoryGenerationConcept {
   private readonly chapters = new Map<string, ChapterRow>();
 
   constructor(
-    private readonly freshID: () => string = () => crypto.randomUUID(),
+    private readonly freshID: () => string =
+      () => crypto.randomUUID(),
+
     private readonly generator: StoryGenerator =
       new OpenAIStoryGenerator(),
+
+    // Allows the application to translate a catalog ID
+    // into a meaningful activity name and description.
+    // Defaults to identity for independent concept tests.
+    private readonly resolveActivity: (
+      activity: string,
+    ) => string = (activity) => activity,
   ) {}
 
   async generateStory({
@@ -68,9 +77,14 @@ export class StoryGenerationConcept {
       );
     }
 
+    // Generate using the human-readable activity,
+    // not the opaque catalog identifier.
+    const activityDescription =
+      this.resolveActivity(activity);
+
     const generated = await this.#generateChapter({
       position: 1,
-      activity,
+      activity: activityDescription,
       context,
       previousChapters: [],
     });
@@ -99,6 +113,7 @@ export class StoryGenerationConcept {
       question: generated.question,
     };
 
+    // Preserve the actual Activity ID for tracking.
     this.stories.set(story, {
       story,
       user,
@@ -182,9 +197,13 @@ export class StoryGenerationConcept {
       },
     );
 
+    // Resolve the same catalog activity for each chapter.
+    const activityDescription =
+      this.resolveActivity(existing.activity);
+
     const generated = await this.#generateChapter({
       position,
-      activity: existing.activity,
+      activity: activityDescription,
       context: existing.context,
       previousChapters,
     });
@@ -271,7 +290,8 @@ export class StoryGenerationConcept {
     input: StoryChapterContext,
   ): Promise<GeneratedStoryChapter> {
     try {
-      const chapter = await this.generator.generateChapter(input);
+      const chapter =
+        await this.generator.generateChapter(input);
 
       if (
         !chapter.text?.trim() ||
@@ -306,7 +326,6 @@ export class StoryGenerationConcept {
             : undefined,
       };
     } catch {
-      // Keep the user flow working if the API is unavailable.
       return this.#fallbackChapter(input);
     }
   }
@@ -314,8 +333,12 @@ export class StoryGenerationConcept {
   #fallbackChapter(
     input: StoryChapterContext,
   ): GeneratedStoryChapter {
-    const { position, activity, context, previousChapters } =
-      input;
+    const {
+      position,
+      activity,
+      context,
+      previousChapters,
+    } = input;
 
     if (position === 1) {
       return {
