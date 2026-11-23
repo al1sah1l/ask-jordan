@@ -1,5 +1,6 @@
 
 import { createStoryGenerator } from "../ai/createStoryGenerator.ts";
+
 import {
   legacyPreparedQuestions,
   PreparedStoryGenerator,
@@ -9,6 +10,15 @@ import {
   EXPORT_STATE,
   RESTORE_STATE,
 } from "../persistence-symbols.ts";
+
+import {
+  START_PROGRESSIVE_STORY,
+} from "../learning/progressive-symbols.ts";
+
+import type {
+  ProgressiveStoryEngine,
+  ProgressiveStorySnapshot,
+} from "../learning/ProgressiveStoryEngine.ts";
 
 import type {
   GeneratedStoryChapter,
@@ -45,8 +55,6 @@ export type StoryRow = {
   activity: string;
   context: string;
   chapters: string[];
-
-  // Optional for compatibility with saved Alpha data.
   format?: StoryFormat;
 };
 
@@ -60,6 +68,9 @@ export type StorySummary = {
 export type StoryGenerationState = {
   stories: StoryRow[];
   chapters: ChapterRow[];
+
+  // Missing in older MongoDB snapshots.
+  progressive?: ProgressiveStorySnapshot;
 };
 
 export class StoryGenerationConcept {
@@ -79,7 +90,68 @@ export class StoryGenerationConcept {
     private readonly resolveActivity: (
       activity: string,
     ) => string = (activity) => activity,
+
+    private readonly progressiveEngine?:
+      ProgressiveStoryEngine,
   ) {}
+
+  #existingActivity(
+    user: string,
+    activity: string,
+  ): boolean {
+    const legacyExists = [...this.stories.values()]
+      .some(
+        (item) =>
+          item.user === user &&
+          item.activity === activity,
+      );
+
+    const progressiveExists =
+      this.progressiveEngine
+        ?.exportState()
+        .stories.some(
+          (item) =>
+            item.user === user &&
+            item.activity === activity,
+        ) ?? false;
+
+    return legacyExists || progressiveExists;
+  }
+
+  /**
+   * Internal progressive creation hook.
+   * It is intentionally not an HTTP/sync-engine action.
+   */
+  async [START_PROGRESSIVE_STORY]({
+    user,
+    activity,
+    context,
+  }: {
+    user: string;
+    activity: string;
+    context: string;
+  }): Promise<{ story: string; chapter: string }> {
+    if (!this.progressiveEngine) {
+      throw new Error(
+        "Progressive story engine is not configured.",
+      );
+    }
+
+    if (this.#existingActivity(user, activity)) {
+      throw new StoryAlreadyExists(
+        "This user already has a story for this activity.",
+      );
+    }
+
+    // Validate the Activity against the catalog.
+    this.resolveActivity(activity);
+
+    return this.progressiveEngine.startStory({
+      user,
+      activity,
+      context,
+    });
+  }
 
   async generateStory({
     user,
@@ -90,13 +162,7 @@ export class StoryGenerationConcept {
     activity: string;
     context: string;
   }): Promise<{ story: string; chapter: string }> {
-    const existing = [...this.stories.values()].find(
-      (item) =>
-        item.user === user &&
-        item.activity === activity,
-    );
-
-    if (existing) {
+    if (this.#existingActivity(user, activity)) {
       throw new StoryAlreadyExists(
         "This user already has a story for this activity.",
       );
@@ -112,13 +178,7 @@ export class StoryGenerationConcept {
       previousChapters: [],
     });
 
-    const duplicate = [...this.stories.values()].find(
-      (item) =>
-        item.user === user &&
-        item.activity === activity,
-    );
-
-    if (duplicate) {
+    if (this.#existingActivity(user, activity)) {
       throw new StoryAlreadyExists(
         "This user already has a story for this activity.",
       );
@@ -126,17 +186,6 @@ export class StoryGenerationConcept {
 
     const story = this.freshID();
     const chapter = this.freshID();
-
-    const firstChapter: ChapterRow = {
-      chapter,
-      story,
-      position: 1,
-      text: generated.text,
-      question: generated.question,
-      choices: generated.choices
-        ? [...generated.choices]
-        : undefined,
-    };
 
     this.stories.set(story, {
       story,
@@ -147,7 +196,16 @@ export class StoryGenerationConcept {
       format: "legacy",
     });
 
-    this.chapters.set(chapter, firstChapter);
+    this.chapters.set(chapter, {
+      chapter,
+      story,
+      position: 1,
+      text: generated.text,
+      question: generated.question,
+      choices: generated.choices
+        ? [...generated.choices]
+        : undefined,
+    });
 
     return { story, chapter };
   }
@@ -171,13 +229,16 @@ export class StoryGenerationConcept {
       );
     }
 
-    if ((existing.format ?? "legacy") !== "legacy") {
+    if (
+      (existing.format ?? "legacy") !== "legacy"
+    ) {
       throw new StoryCannotContinue(
         "Use the progressive chapter flow for this story.",
       );
     }
 
-    const currentChapterId = existing.chapters.at(-1);
+    const currentChapterId =
+      existing.chapters.at(-1);
 
     const currentChapter = currentChapterId
       ? this.chapters.get(currentChapterId)
@@ -239,9 +300,10 @@ export class StoryGenerationConcept {
       existing.chapters.length + 1
     ) as StoryChapterPosition;
 
-    const previousChapters = existing.chapters.map(
-      (chapterId) => {
-        const previous = this.chapters.get(chapterId);
+    const previousChapters =
+      existing.chapters.map((chapterId) => {
+        const previous =
+          this.chapters.get(chapterId);
 
         if (!previous) {
           throw new Error(
@@ -258,15 +320,13 @@ export class StoryGenerationConcept {
               ? cleanedAnswer
               : previous.answer,
         };
-      },
-    );
-
-    const activityDescription =
-      this.resolveActivity(existing.activity);
+      });
 
     const generated = await this.#generateChapter({
       position,
-      activity: activityDescription,
+      activity: this.resolveActivity(
+        existing.activity,
+      ),
       context: existing.context,
       previousChapters,
     });
@@ -290,7 +350,7 @@ export class StoryGenerationConcept {
 
     const chapter = this.freshID();
 
-    const nextChapter: ChapterRow = {
+    this.chapters.set(chapter, {
       chapter,
       story,
       position,
@@ -299,11 +359,11 @@ export class StoryGenerationConcept {
       choices: generated.choices
         ? [...generated.choices]
         : undefined,
-      suggestedActivity: generated.suggestedActivity,
-    };
+      suggestedActivity:
+        generated.suggestedActivity,
+    });
 
     existing.chapters.push(chapter);
-    this.chapters.set(chapter, nextChapter);
 
     return { chapter };
   }
@@ -324,22 +384,25 @@ export class StoryGenerationConcept {
     }
 
     return {
-      chapters: existing.chapters.map((chapterId) => {
-        const chapter = this.chapters.get(chapterId);
+      chapters: existing.chapters.map(
+        (chapterId) => {
+          const chapter =
+            this.chapters.get(chapterId);
 
-        if (!chapter) {
-          throw new Error(
-            "A chapter referenced by this story is missing.",
-          );
-        }
+          if (!chapter) {
+            throw new Error(
+              "A chapter referenced by this story is missing.",
+            );
+          }
 
-        return {
-          ...chapter,
-          choices: chapter.choices
-            ? [...chapter.choices]
-            : undefined,
-        };
-      }),
+          return {
+            ...chapter,
+            choices: chapter.choices
+              ? [...chapter.choices]
+              : undefined,
+          };
+        },
+      ),
     };
   }
 
@@ -380,19 +443,35 @@ export class StoryGenerationConcept {
   }: {
     user: string;
   }): { stories: StorySummary[] } {
-    const stories = [...this.stories.values()]
+    const legacy = [...this.stories.values()]
       .filter((story) => story.user === user)
       .map((story) => ({
         story: story.story,
         user: story.user,
         activity: story.activity,
-        format: story.format ?? "legacy",
-      }))
-      .sort((a, b) =>
-        a.activity.localeCompare(b.activity),
-      );
+        format:
+          story.format ?? "legacy" as StoryFormat,
+      }));
 
-    return { stories };
+    const progressive =
+      this.progressiveEngine
+        ?.exportState()
+        .stories.filter(
+          (story) => story.user === user,
+        )
+        .map((story) => ({
+          story: story.story,
+          user: story.user,
+          activity: story.activity,
+          format: "progressive" as StoryFormat,
+        })) ?? [];
+
+    return {
+      stories: [...legacy, ...progressive].sort(
+        (a, b) =>
+          a.activity.localeCompare(b.activity),
+      ),
+    };
   }
 
   [EXPORT_STATE](): StoryGenerationState {
@@ -413,10 +492,33 @@ export class StoryGenerationConcept {
             : undefined,
         }),
       ),
+
+      ...(this.progressiveEngine
+        ? {
+            progressive:
+              this.progressiveEngine.exportState(),
+          }
+        : {}),
     };
   }
 
   [RESTORE_STATE](state: StoryGenerationState): void {
+    if (
+      !this.progressiveEngine &&
+      state.progressive?.stories.length
+    ) {
+      throw new Error(
+        "Cannot restore progressive stories without a configured engine.",
+      );
+    }
+
+    // Validate progressive state before replacing legacy.
+    if (this.progressiveEngine) {
+      this.progressiveEngine.restoreState(
+        state.progressive ?? { stories: [] },
+      );
+    }
+
     this.stories.clear();
     this.chapters.clear();
 
@@ -431,7 +533,6 @@ export class StoryGenerationConcept {
     }
 
     for (const row of state.chapters) {
-      // Preserve historical answer/question migration.
       const upgradedQuestion =
         row.answer == null &&
         typeof row.question === "string"
@@ -440,6 +541,7 @@ export class StoryGenerationConcept {
 
       this.chapters.set(row.chapter, {
         ...row,
+
         question:
           upgradedQuestion ??
           row.question ??
@@ -471,7 +573,9 @@ export class StoryGenerationConcept {
         !chapter.text.trim() ||
         chapter.text.length > 5000
       ) {
-        throw new Error("Invalid AI chapter text.");
+        throw new Error(
+          "Invalid AI chapter text.",
+        );
       }
 
       if (
