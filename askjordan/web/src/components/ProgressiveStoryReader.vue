@@ -9,6 +9,7 @@ const emit = defineEmits<{ back: []; busy: [value: boolean] }>();
 const story = ref<ProgressiveStoryResponse | null>(null);
 const answer = ref("");
 const reflection = ref("");
+const savedReflections = ref<Record<string, string>>({});
 const loading = ref(false);
 const error = ref("");
 const notice = ref("");
@@ -31,15 +32,40 @@ function setBusy(value: boolean) {
   emit("busy", value);
 }
 
+
 async function refresh() {
   const result = await api.getProgressiveStory(props.storyId);
-  if (!Array.isArray(result.chapters) || !result.chapters.length) throw new Error("Empty progressive story");
+
+  if (!Array.isArray(result.chapters) || !result.chapters.length) {
+    throw new Error("Empty progressive story");
+  }
 
   const oldChapter = latest.value;
+  const newChapter = result.chapters.at(-1)!;
+
+  const completed = result.chapters.filter(chapter => chapter.stage === "reflected");
+
+  const entries = await Promise.all(completed.map(async chapter => {
+    const response = await api.getProgressiveReflection(props.storyId, chapter.chapter);
+    return [chapter.chapter, response.entry?.text ?? ""] as const;
+  }));
+
+  const reflections = Object.fromEntries(entries);
+
+  if (newChapter.stage === "awaiting-reflection") {
+    const response = await api.getProgressiveReflection(props.storyId, newChapter.chapter);
+    reflection.value = response.entry?.text ?? "";
+  } else if (newChapter.stage === "reflected") {
+    reflection.value = reflections[newChapter.chapter] ?? "";
+  } else {
+    reflection.value = "";
+  }
+
+  savedReflections.value = reflections;
   story.value = result;
 
-  if (!oldChapter || oldChapter.chapter !== result.chapters.at(-1)?.chapter ||
-      oldChapter.stage !== result.chapters.at(-1)?.stage) {
+  if (!oldChapter || oldChapter.chapter !== newChapter.chapter ||
+      oldChapter.stage !== newChapter.stage) {
     answer.value = "";
   }
 }
@@ -51,10 +77,6 @@ async function load() {
 
   try {
     await refresh();
-    if (stage.value === "awaiting-reflection" || stage.value === "reflected") {
-      const saved = await api.getProgressiveReflection(props.storyId, latest.value!.chapter);
-      reflection.value = saved.entry?.text ?? "";
-    }
   } catch (err) {
     error.value = friendlyError(err, "Couldn't load your saved adventure. Please retry.");
   } finally {
@@ -155,6 +177,7 @@ watch(() => props.storyId, () => {
   error.value = "";
   notice.value = "";
   void load();
+  savedReflections.value = {};
 }, { immediate: true });
 </script>
 
@@ -196,6 +219,11 @@ watch(() => props.storyId, () => {
         <p v-if="chapter.firstDecision"><strong>First choice:</strong> {{ chapter.firstDecision.answer }}</p>
         <p v-if="chapter.secondDecision"><strong>Second choice:</strong> {{ chapter.secondDecision.answer }}</p>
         <p v-if="chapter.conclusion">{{ chapter.conclusion }}</p>
+
+        <div v-if="savedReflections[chapter.chapter]" class="progressive-saved-reflection">
+            <h3>My reflection</h3>
+            <p>{{ savedReflections[chapter.chapter] }}</p>
+        </div>
       </details>
     </section>
 
@@ -284,6 +312,10 @@ watch(() => props.storyId, () => {
         <div class="story-complete-icon">★</div>
         <h2>Chapter complete!</h2>
         <p>Your reflection is saved. Ready to explore something new?</p>
+        <div v-if="savedReflections[latest.chapter]" class="progressive-saved-reflection">
+            <h3>My reflection</h3>
+            <p>{{ savedReflections[latest.chapter] }}</p>
+        </div>
         <button class="button button-primary" type="button" :disabled="loading" @click="nextChapter">
           {{ loading ? "Creating chapter..." : "Start next chapter →" }}
         </button>
@@ -307,4 +339,26 @@ watch(() => props.storyId, () => {
 .progressive-history-item summary { cursor: pointer; font-weight: 800; }
 .progressive-history-item p { margin: 12px 0 0; line-height: 1.7; }
 .progressive-caption { color: var(--text-muted); font-size: 12px; margin-top: 12px; }
+
+.progressive-saved-reflection {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f5f8ff;
+  text-align: left;
+}
+
+.progressive-saved-reflection h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.progressive-saved-reflection p {
+  margin: 0;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 </style>

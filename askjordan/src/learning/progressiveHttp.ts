@@ -204,20 +204,35 @@ export function createProgressiveHttpHandler(
     });
   }
 
+  
   async function getReflection(user: string, input: ChapterInput): Promise<Response> {
     try {
-      const current = latestChapter(user, input.story);
-      if (!current || current.chapter !== input.chapter) return json({ error: "CONFLICT" }, 409);
-      if (current.stage !== "awaiting-reflection" && current.stage !== "reflected") {
-        return json({ error: "CONFLICT" }, 409);
-      }
+        const { progressive } = getPersistenceConcepts(application);
+        const story = progressive.getStory({ user, story: input.story });
+        const chapter = story.chapters.find(item => item.chapter === input.chapter);
 
-      const { entry } = await reflecting.get({ user, story: input.story, chapter: input.chapter });
-      return json({ entry });
+        if (!chapter) return json({ error: "NOT_FOUND" }, 404);
+
+        const isLatest = story.chapters.at(-1)?.chapter === chapter.chapter;
+        const canRead = chapter.stage === "reflected" ||
+        (isLatest && chapter.stage === "awaiting-reflection");
+
+        if (!canRead) return json({ error: "CONFLICT" }, 409);
+
+        const { entry } = await reflecting.get({
+        user,
+        story: input.story,
+        chapter: input.chapter,
+        });
+
+        return json({ entry });
     } catch (error) {
-      if (error instanceof ProgressiveStoryNotFound) return json({ error: "NOT_FOUND" }, 404);
-      console.error("Progressive reflection read failed:", error);
-      return json({ error: "INTERNAL_ERROR" }, 500);
+        if (error instanceof ProgressiveStoryNotFound) {
+        return json({ error: "NOT_FOUND" }, 404);
+        }
+
+        console.error("Progressive reflection read failed:", error);
+        return json({ error: "INTERNAL_ERROR" }, 500);
     }
   }
 
