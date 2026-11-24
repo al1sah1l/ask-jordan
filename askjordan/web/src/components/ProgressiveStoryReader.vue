@@ -1,6 +1,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import MotionReveal from "./MotionReveal.vue";
+import MotionDisclosure from "./MotionDisclosure.vue";
+import NarrativePassage from "./NarrativePassage.vue";
+import AppIcon from "./AppIcon.vue";
+import { freezeLeavingItem, restoreEnteringItem } from "../utils/motion";
+import { chapterProgress } from "../utils/storyProgress";
 import {
   api, friendlyError,
   type ProgressiveChapter, type ProgressiveQuestion,
@@ -33,6 +39,13 @@ const enlargedPhotoAlt = ref("");
 const chapters = computed(() => story.value?.chapters ?? []);
 const latest = computed<ProgressiveChapter | undefined>(() => chapters.value.at(-1));
 const stage = computed(() => latest.value?.stage);
+const progress = computed(() => chapterProgress(stage.value));
+const learningOverview = computed(() => chapters.value[0]?.theory);
+const learningSummary = computed(() => {
+  const text = learningOverview.value?.explanation ?? "";
+  return Array.from(new Intl.Segmenter("en", { granularity: "sentence" }).segment(text), item => item.segment.trim())
+    .filter(Boolean).slice(0, 2).join(" ");
+});
 
 const currentQuestion = computed<ProgressiveQuestion | undefined>(() => {
   if (stage.value === "first-choice") return latest.value?.firstQuestion;
@@ -293,23 +306,26 @@ watch(() => props.storyId, () => {
 <template>
   <section class="story-reader progressive-reader" :aria-busy="loading">
     <button class="button button-light story-back" type="button" :disabled="loading" @click="emit('back')">
-      ← Activities
+      <AppIcon name="arrow-left" /> Activities
     </button>
 
     <div class="story-heading">
       <span class="eyebrow">YOUR LEARNING ADVENTURE</span>
       <h1>{{ activityName }}</h1>
-      <p>Explore, make decisions, try something new, and reflect.</p>
     </div>
 
-    <div v-if="error" class="notification error" role="alert">
+    <MotionReveal :show="Boolean(error)">
+    <div class="notification error" role="alert">
       {{ error }}
       <button class="button button-light" type="button" :disabled="loading" @click="load">
         Reload progress
       </button>
     </div>
+    </MotionReveal>
 
-    <p v-if="notice" class="notification success" role="status">{{ notice }}</p>
+    <MotionReveal :show="Boolean(notice)">
+      <p class="notification success" role="status">{{ notice }}</p>
+    </MotionReveal>
     <p v-if="loading" class="story-loading" role="status">Updating your adventure...</p>
 
     <div v-if="latest" class="story-progress">
@@ -317,18 +333,26 @@ watch(() => props.storyId, () => {
         <strong>Chapter {{ latest.position }}</strong>
         <span>{{ chapters.filter(chapter => chapter.stage === "reflected").length }} completed</span>
       </div>
-      <p class="progressive-step-label">
-        {{ stage === "first-choice" ? "First decision" :
-           stage === "second-choice" ? "Second decision" :
-           stage === "awaiting-reflection" ? "Your mini challenge" : "Chapter complete" }}
-      </p>
+      <div class="story-progress-track" role="progressbar" aria-label="Chapter progress"
+        :aria-valuenow="progress.percent" aria-valuemin="0" aria-valuemax="100"
+        :aria-valuetext="`Chapter ${latest.position}: ${progress.label}`">
+        <div class="story-progress-fill" :style="{ width: `${progress.percent}%` }"></div>
+      </div>
     </div>
+
+    <section v-if="learningOverview" class="progressive-theory adventure-overview" aria-labelledby="learning-overview-heading">
+      <h2 id="learning-overview-heading">What you'll learn</h2>
+      <div class="progressive-terms" aria-label="Topics you'll explore">
+        <span v-for="term in learningOverview.keyTerms" :key="term">{{ term }}</span>
+      </div>
+      <p>{{ learningSummary }}</p>
+    </section>
 
     <section v-if="chapters.length > 1" class="progressive-history">
       <h2>Previous chapters</h2>
 
-      <details v-for="chapter in chapters.slice(0, -1)" :key="chapter.chapter" class="progressive-history-item">
-        <summary>Chapter {{ chapter.position }}: {{ chapter.theory.topic }} ✓</summary>
+      <MotionDisclosure v-for="chapter in chapters.slice(0, -1)" :key="chapter.chapter"
+        :title="`Chapter ${chapter.position}: ${chapter.theory.topic}`">
 
         <p>{{ chapter.theory.explanation }}</p>
         <p v-if="chapter.firstDecision"><strong>First choice:</strong> {{ chapter.firstDecision.answer }}</p>
@@ -357,11 +381,11 @@ watch(() => props.storyId, () => {
             </figure>
           </div>
         </div>
-      </details>
+      </MotionDisclosure>
     </section>
 
     <template v-if="latest">
-      <article class="story-chapter-card">
+      <article :key="latest.chapter" class="story-chapter-card motion-content">
         <div class="chapter-label">
           <span class="chapter-number">{{ latest.position }}</span>
           <span>CHAPTER {{ latest.position }}</span>
@@ -369,48 +393,48 @@ watch(() => props.storyId, () => {
 
         <h2>{{ latest.theory.topic }}</h2>
 
-        <div class="progressive-theory">
-          <h3>What you'll learn</h3>
-          <p>{{ latest.theory.explanation }}</p>
-
-          <div class="progressive-terms">
-            <span v-for="term in latest.theory.keyTerms" :key="term">{{ term }}</span>
-          </div>
-        </div>
-
         <h3 class="progressive-section-title">The story</h3>
-        <p class="chapter-narrative">{{ latest.introduction }}</p>
+        <NarrativePassage :text="latest.introduction" />
 
+        <MotionReveal :show="Boolean(latest.firstDecision)">
         <div v-if="latest.firstDecision" class="story-previous-answer">
           <strong>{{ latest.firstDecision.question }}</strong>
           <p>Your choice: {{ latest.firstDecision.answer }}</p>
         </div>
+        </MotionReveal>
 
-        <template v-if="latest.secondScene">
+        <MotionReveal :show="Boolean(latest.secondScene)">
           <h3 class="progressive-section-title">What happened next</h3>
-          <p class="chapter-narrative">{{ latest.secondScene }}</p>
-        </template>
+          <NarrativePassage :text="latest.secondScene!" />
+        </MotionReveal>
 
+        <MotionReveal :show="Boolean(latest.secondDecision)">
         <div v-if="latest.secondDecision" class="story-previous-answer">
           <strong>{{ latest.secondDecision.question }}</strong>
           <p>Your choice: {{ latest.secondDecision.answer }}</p>
         </div>
+        </MotionReveal>
 
-        <template v-if="latest.conclusion">
+        <MotionReveal :show="Boolean(latest.conclusion)">
           <h3 class="progressive-section-title">The outcome</h3>
-          <p class="chapter-narrative">{{ latest.conclusion }}</p>
-        </template>
+          <NarrativePassage :text="latest.conclusion!" />
+        </MotionReveal>
 
-        <div v-if="latest.practicalChallenge" class="story-challenge">
-          <span class="story-challenge-icon" aria-hidden="true">★</span>
+        <MotionReveal :show="Boolean(latest.practicalChallenge)">
+        <div class="story-challenge">
+          <span class="story-challenge-icon" aria-hidden="true">⭐</span>
           <div>
             <h3>Your mini challenge</h3>
-            <p>{{ latest.practicalChallenge }}</p>
+            <ol class="challenge-steps">
+              <li v-for="(step, index) in latest.practicalChallenge?.split(/\n+/).map(line => line.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean)" :key="index">{{ step }}</li>
+            </ol>
           </div>
         </div>
+        </MotionReveal>
       </article>
 
-      <form v-if="currentQuestion" class="story-answer-card" @submit.prevent="submitChoice">
+      <Transition name="app-screen" mode="out-in" @before-enter="element => element.removeAttribute('inert')" @before-leave="element => element.setAttribute('inert', '')">
+      <form v-if="currentQuestion" :key="`${latest.chapter}:${stage}`" class="story-answer-card" @submit.prevent="submitChoice">
         <h2>{{ currentQuestion.prompt }}</h2>
 
         <fieldset v-if="currentQuestion.options?.length" class="story-choices">
@@ -434,11 +458,14 @@ watch(() => props.storyId, () => {
         ></textarea>
 
         <button class="button button-primary" type="submit" :disabled="!canAnswer">
-          {{ loading ? "Saving..." : "Make my choice →" }}
+          {{ loading ? "Saving..." : "Make my choice" }}
+          <AppIcon v-if="!loading" name="arrow-right" />
         </button>
       </form>
+      </Transition>
 
-      <section v-if="stage === 'awaiting-reflection'" class="activity-work">
+      <MotionReveal :show="stage === 'awaiting-reflection'">
+      <section class="activity-work">
         <h2>Your reflection</h2>
         <p>After trying the challenge, describe what you did and what you noticed. You can also share photos of your work.</p>
 
@@ -472,8 +499,8 @@ watch(() => props.storyId, () => {
             JPEG, PNG, or WebP. Large photos are compressed before saving.
           </p>
 
-          <div v-if="photos.length" class="work-photos progressive-photo-gallery">
-            <figure v-for="(photo, index) in photos" :key="index">
+          <TransitionGroup name="motion-list" tag="div" class="work-photos progressive-photo-gallery" @before-enter="restoreEnteringItem" @before-leave="freezeLeavingItem">
+            <figure v-for="(photo, index) in photos" :key="`${photo}:${index}`">
               <button
                 type="button"
                 class="progressive-photo-button"
@@ -494,16 +521,19 @@ watch(() => props.storyId, () => {
                 Remove
               </button>
             </figure>
-          </div>
+          </TransitionGroup>
 
           <button class="button button-primary" type="submit" :disabled="!canSaveReflection">
-            {{ loading ? "Saving..." : "Save reflection ✓" }}
+            {{ loading ? "Saving..." : "Save reflection" }}
+            <AppIcon v-if="!loading" name="check" />
           </button>
         </form>
       </section>
+      </MotionReveal>
 
-      <section v-if="stage === 'reflected'" class="story-complete-card">
-        <div class="story-complete-icon">★</div>
+      <MotionReveal :show="stage === 'reflected'">
+      <section class="story-complete-card">
+        <div class="story-complete-icon" aria-hidden="true">⭐</div>
         <h2>Chapter complete!</h2>
         <p>Your reflection is saved. Ready to explore something new?</p>
 
@@ -531,9 +561,11 @@ watch(() => props.storyId, () => {
         </div>
 
         <button class="button button-primary" type="button" :disabled="loading" @click="nextChapter">
-          {{ loading ? "Creating chapter..." : "Start next chapter →" }}
+          {{ loading ? "Creating chapter..." : "Start next chapter" }}
+          <AppIcon v-if="!loading" name="arrow-right" />
         </button>
       </section>
+      </MotionReveal>
     </template>
 
     <dialog
@@ -550,7 +582,7 @@ watch(() => props.storyId, () => {
           aria-label="Close enlarged photo"
           @click="closePhoto"
         >
-          ×
+          <AppIcon name="close" :size="22" />
         </button>
 
         <img v-if="enlargedPhoto" :src="enlargedPhoto" :alt="enlargedPhotoAlt" />
@@ -562,13 +594,6 @@ watch(() => props.storyId, () => {
 <style scoped>
 .progressive-reader {
   padding-bottom: 60px;
-}
-
-.progressive-step-label {
-  margin: 8px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 700;
 }
 
 .progressive-theory {
@@ -587,6 +612,10 @@ watch(() => props.storyId, () => {
   color: #344861;
   line-height: 1.8;
 }
+
+.adventure-overview h2 { margin: 0; font-size: 21px; }
+.adventure-overview .progressive-terms { margin-top: 12px; }
+.adventure-overview p { margin: 14px 0 0; font-size: 15px; }
 
 .progressive-terms {
   display: flex;

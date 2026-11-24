@@ -1,7 +1,11 @@
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import StoryReader from "./components/StoryReader.vue";
+import MotionReveal from "./components/MotionReveal.vue";
+import { freezeLeavingItem, restoreEnteringItem } from "./utils/motion";
+import { chapterProgress } from "./utils/storyProgress";
+import AppIcon from "./components/AppIcon.vue";
 
 import {
   api,
@@ -10,9 +14,11 @@ import {
   type Activity,
   type Preference,
   type Profile,
+  type StorySummary,
 } from "./api/client";
 
 type Screen = "auth" | "account-error" | "profile" | "activities" | "story";
+type AuthMode = "sign-in" | "register";
 
 const screen = ref<Screen>("auth");
 
@@ -21,6 +27,24 @@ const profile = ref<Profile | null>(null);
 
 const username = ref("");
 const password = ref("");
+const confirmPassword = ref("");
+const authMode = ref<AuthMode>("sign-in");
+const showDeleteAccount = ref(false);
+const deletePassword = ref("");
+const deleteConfirmation = ref("");
+const deleteError = ref("");
+const authForm = ref<HTMLFormElement | null>(null);
+const authFormHeight = ref<number>();
+
+// Measure the active form so adding confirmation or errors never snaps the card.
+watch(authForm, (form, _previous, onCleanup) => {
+  if (!form) return;
+  const measure = () => { authFormHeight.value = form.offsetHeight; };
+  const observer = new ResizeObserver(measure);
+  observer.observe(form);
+  measure();
+  onCleanup(() => observer.disconnect());
+}, { flush: "post" });
 
 const profileName = ref("");
 const profileAbout = ref("");
@@ -42,6 +66,8 @@ const selectedActivityName = ref("");
 
 // This map is reconstructed from MongoDB-backed API data.
 const startedStories = ref<Record<string, string>>({});
+const interestProgress = ref<Record<string, { percent: number; description: string }>>({});
+let progressRevision = 0;
 
 const filteredActivities = computed(() =>
   activities.value.filter((activity) =>
@@ -118,6 +144,25 @@ async function loadCatalog() {
       story.story,
     ]),
   );
+  void loadInterestProgress(storiesResponse.stories);
+}
+
+async function loadInterestProgress(stories: StorySummary[]) {
+  const revision = ++progressRevision;
+  const user = account.value;
+  const results = await Promise.allSettled(stories.filter(story => savedSubjects.value.has(story.activity))
+    .map(async story => {
+      if (story.format === "progressive") {
+        const data = await api.getProgressiveStory(story.story);
+        const latest = data.chapters.at(-1);
+        const progress = chapterProgress(latest?.stage);
+        return [story.activity, { percent: progress.percent, description: `Chapter ${latest?.position ?? 1}: ${progress.label}` }] as const;
+      }
+      const { chapters } = await api.getStory(story.story);
+      return [story.activity, { percent: Math.min(100, Math.round(chapters.length / 3 * 100)), description: `${chapters.length} of 3 chapters` }] as const;
+    }));
+  if (revision !== progressRevision || account.value !== user) return;
+  interestProgress.value = Object.fromEntries(results.flatMap(result => result.status === "fulfilled" ? [result.value] : []));
 }
 
 async function loadProfileAndNavigate() {
@@ -169,8 +214,45 @@ async function saveProfile() {
   });
 }
 
-async function authenticate(mode: "register" | "sign-in") {
+function switchAuthMode(mode: AuthMode) {
+  if (loading.value || authMode.value === mode) return;
+  authMode.value = mode;
+  password.value = "";
+  confirmPassword.value = "";
+  error.value = "";
+  message.value = "";
+}
+
+async function authenticate(mode: AuthMode) {
   await run(async () => {
+    if (mode === "register") {
+      const problems: string[] = [];
+      const name = username.value.trim();
+      if (!name) {
+        problems.push("Enter a username.");
+      } else if (name.length < 3) {
+        problems.push("Your username is too short. Use at least 3 characters.");
+      } else if (name.length > 32) {
+        problems.push("Your username is too long. Use no more than 32 characters.");
+      } else if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+        problems.push("Your username contains unsupported characters. Use only letters, numbers, underscores, or hyphens.");
+      }
+      if (!password.value.length) {
+        problems.push("Enter a password.");
+      } else if (password.value.length < 8) {
+        problems.push("Your password is too short. Use at least 8 characters.");
+      } else if (password.value.length > 128) {
+        problems.push("Your password is too long. Use no more than 128 characters.");
+      } else if (!confirmPassword.value) {
+        problems.push("Confirm your password.");
+      } else if (password.value !== confirmPassword.value) {
+        problems.push("Your passwords don't match. Enter the same password in both fields.");
+      }
+      if (problems.length) {
+        throw new ApiError("INVALID_REQUEST", 400, problems.join(" "));
+      }
+    }
+
     const result =
       mode === "register"
         ? await api.register(
@@ -184,9 +266,12 @@ async function authenticate(mode: "register" | "sign-in") {
 
     account.value = result.account;
     password.value = "";
+    confirmPassword.value = "";
 
     selectedStory.value = null;
     startedStories.value = {};
+    interestProgress.value = {};
+    progressRevision++;
 
     try {
       await loadProfileAndNavigate();
@@ -200,25 +285,65 @@ async function authenticate(mode: "register" | "sign-in") {
 async function signOut() {
   await run(async () => {
     await api.signOut();
+    clearAccountState();
+  });
+}
 
+function clearAccountState() {
     account.value = null;
     profile.value = null;
 
     username.value = "";
     password.value = "";
+    confirmPassword.value = "";
+    authMode.value = "sign-in";
     profileName.value = "";
     profileAbout.value = "";
 
     activities.value = [];
     preferences.value = [];
     startedStories.value = {};
+    interestProgress.value = {};
+    progressRevision++;
 
     selectedStory.value = null;
     selectedActivityName.value = "";
     search.value = "";
 
     screen.value = "auth";
-  });
+    showDeleteAccount.value = false;
+    deletePassword.value = "";
+    deleteConfirmation.value = "";
+    deleteError.value = "";
+}
+
+function toggleDeleteAccount() {
+  if (loading.value) return;
+  showDeleteAccount.value = !showDeleteAccount.value;
+  deletePassword.value = "";
+  deleteConfirmation.value = "";
+  deleteError.value = "";
+}
+
+async function deleteAccount() {
+  if (navigationBusy.value || !showDeleteAccount.value) return;
+  loading.value = true;
+  deleteError.value = "";
+  try {
+    await api.deleteAccount(deletePassword.value, deleteConfirmation.value);
+    clearAccountState();
+    error.value = "";
+    message.value = "Your account has been deleted.";
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      clearAccountState();
+      error.value = "Your session has ended. Please sign in again to manage your account.";
+    } else {
+      deleteError.value = friendlyError(err, "We couldn't finish deleting your account. Please try again.");
+    }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function saveInterest(activity: Activity) {
@@ -280,6 +405,10 @@ async function backToActivities() {
 
 async function goHome() {
   if (navigationBusy.value) return;
+  if (screen.value === "account-error") {
+    returnToMainPage();
+    return;
+  }
   if (account.value && profile.value) {
     await backToActivities();
   } else {
@@ -297,6 +426,7 @@ function editProfile() {
   error.value = "";
   message.value = "";
   screen.value = "profile";
+  void api.getStories().then(({ stories }) => loadInterestProgress(stories)).catch(() => {});
 }
 
 function cancelProfile() {
@@ -311,15 +441,25 @@ async function restoreAccount() {
   initializing.value = true;
   error.value = "";
   try {
-    const result = await api.currentUser();
-    account.value = result.account;
-    await loadProfileAndNavigate();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const result = await api.currentUser();
+        account.value = result.account;
+        await loadProfileAndNavigate();
+        break;
+      } catch (err) {
+        const temporary = err instanceof ApiError &&
+          (err.status >= 500 || err.status === 0 || err.code === "INVALID_RESPONSE");
+        if (!temporary || attempt === 1) throw err;
+        // Read-only recovery tolerates a brief local server restart.
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+    }
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.code === "INVALID_INPUT")) {
       account.value = null;
       profile.value = null;
       screen.value = "auth";
-      if (err.status === 401) error.value = "Please sign in.";
     } else {
       screen.value = "account-error";
       error.value = friendlyError(err, "We couldn't load your account. Please try again.");
@@ -329,6 +469,13 @@ async function restoreAccount() {
   }
 }
 
+function returnToMainPage() {
+  if (navigationBusy.value) return;
+  clearAccountState();
+  error.value = "";
+  message.value = "";
+}
+
 onMounted(restoreAccount);
 </script>
 
@@ -336,7 +483,7 @@ onMounted(restoreAccount);
   <div class="app-shell">
     <header class="site-header">
       <a class="brand" href="/" :aria-disabled="navigationBusy" @click.prevent="goHome">
-        <span class="brand-icon">✦</span>
+        <span class="brand-icon"><AppIcon name="sparkles" :size="27" /></span>
         Ask Jordan
       </a>
 
@@ -347,49 +494,59 @@ onMounted(restoreAccount);
 
         <button v-if="profile && screen !== 'profile'" class="button button-light" :disabled="navigationBusy" @click="editProfile">Profile</button>
         <button
-          class="button button-light"
+          class="sign-out-icon"
+          aria-label="Sign out"
+          title="Sign out"
           :disabled="navigationBusy"
           @click="signOut"
         >
-          Sign out
+          <AppIcon name="sign-out" :size="23" />
         </button>
       </div>
     </header>
 
     <main class="main-content">
+      <MotionReveal :show="Boolean(error) && screen !== 'auth' && screen !== 'account-error'">
       <div
-        v-if="error"
         class="notification error"
         role="alert"
       >
         {{ error }}
       </div>
+      </MotionReveal>
 
+      <MotionReveal :show="Boolean(message)">
       <div
-        v-if="message"
         class="notification success"
         role="status"
       >
         {{ message }}
       </div>
+      </MotionReveal>
 
+      <Transition name="app-screen" mode="out-in" @before-enter="element => element.removeAttribute('inert')" @before-leave="element => element.setAttribute('inert', '')">
       <section
         v-if="initializing"
+        key="loading"
         class="initial-loading"
       >
         <h2>Getting your adventure ready...</h2>
         <p>Just a moment!</p>
       </section>
 
-      <section v-else-if="screen === 'account-error'" class="initial-loading">
-        <h1>Let's reconnect to your account</h1>
-        <p>Your saved profile and stories will be here when the connection returns.</p>
-        <button class="button button-primary" :disabled="navigationBusy" @click="restoreAccount">Retry loading account</button>
+      <section v-else-if="screen === 'account-error'" key="account-error" class="initial-loading">
+        <h1>We couldn’t open Ask Jordan</h1>
+        <p>We couldn’t load your profile and adventures right now. Check your connection, then try again.</p>
+        <div class="recovery-actions">
+          <button class="button button-primary" :disabled="navigationBusy" @click="restoreAccount">Try again</button>
+          <a class="button button-light" href="/" @click.prevent="returnToMainPage">Back to main page</a>
+        </div>
       </section>
 
       <!-- LOGIN / REGISTER -->
       <section
         v-else-if="screen === 'auth'"
+        key="auth"
         class="welcome"
       >
         <div class="welcome-copy">
@@ -405,57 +562,97 @@ onMounted(restoreAccount);
 
         </div>
 
-        <form
-          class="auth-card"
-          @submit.prevent="authenticate('sign-in')"
-        >
-          <h2>Welcome!</h2>
-
-
-
-          <label for="username">Username</label>
-
-          <input
-            id="username"
-            v-model="username"
-            autocomplete="username"
-            placeholder="Your username"
-            required
-          />
-
-          <label for="password">Password</label>
-
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Your password"
-            required
-          />
-
-          <button
-            class="button button-primary"
-            type="submit"
-            :disabled="loading"
+        <div class="auth-card">
+          <div
+            class="auth-modes"
+            :class="{ 'is-register': authMode === 'register' }"
+            role="group"
+            aria-label="Account access"
           >
-            {{ loading ? "Please wait..." : "Sign in" }}
-          </button>
+            <button
+              type="button"
+              class="auth-mode"
+              :aria-pressed="authMode === 'sign-in'"
+              :disabled="loading"
+              @click="switchAuthMode('sign-in')"
+            >Sign in</button>
+            <button
+              type="button"
+              class="auth-mode"
+              :aria-pressed="authMode === 'register'"
+              :disabled="loading"
+              @click="switchAuthMode('register')"
+            >Create account</button>
+          </div>
 
-          <button
-            class="button button-light"
-            type="button"
-            :disabled="loading"
-            @click="authenticate('register')"
+          <div
+            class="auth-form-stage"
+            :class="{ 'is-register': authMode === 'register' }"
+            :style="authFormHeight === undefined ? undefined : { height: `${authFormHeight}px` }"
           >
-            Create account
-          </button>
-        </form>
+            <Transition name="auth-slide" @before-enter="element => element.removeAttribute('inert')" @before-leave="element => element.setAttribute('inert', '')">
+              <form
+                :key="authMode"
+                ref="authForm"
+                class="auth-form"
+                :aria-label="authMode === 'register' ? 'Create account' : 'Sign in'"
+                :novalidate="authMode === 'register'"
+                @submit.prevent="authenticate(authMode)"
+              >
+                <MotionReveal :show="Boolean(error)">
+                  <div class="notification error" role="alert">{{ error }}</div>
+                </MotionReveal>
+
+                <label for="username">Username</label>
+
+                <input
+                  id="username"
+                  v-model="username"
+                  autocomplete="username"
+                  placeholder="Your username"
+                  required
+                />
+
+                <label for="password">Password</label>
+
+                <input
+                  id="password"
+                  v-model="password"
+                  type="password"
+                  :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'"
+                  placeholder="Your password"
+                  required
+                />
+
+                <template v-if="authMode === 'register'">
+                  <label for="confirm-password">Confirm password</label>
+                  <input
+                    id="confirm-password"
+                    v-model="confirmPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="Enter your password again"
+                    required
+                  />
+                </template>
+
+                <button
+                  class="button button-primary"
+                  type="submit"
+                  :disabled="loading"
+                >
+                  {{ loading ? "Please wait..." : authMode === "register" ? "Create account" : "Sign in" }}
+                </button>
+              </form>
+            </Transition>
+          </div>
+        </div>
       </section>
 
       <!-- PROFILE -->
       <section
         v-else-if="screen === 'profile'"
+        key="profile"
         class="profile-page"
       >
         <h1>Your profile</h1>
@@ -497,8 +694,9 @@ onMounted(restoreAccount);
             {{
               loading
                 ? "Saving profile..."
-                : profile ? "Save profile" : "Let's explore! →"
+                : profile ? "Save profile" : "Let's explore!"
             }}
+            <AppIcon v-if="!loading && !profile" name="arrow-right" />
           </button>
           <button v-if="profile" class="button button-light" type="button" :disabled="navigationBusy" @click="cancelProfile">Cancel</button>
         </form>
@@ -507,25 +705,56 @@ onMounted(restoreAccount);
           <h2 id="your-interests">Your Interests</h2>
           <ul class="interest-list">
             <li v-for="activity in interestedActivities" :key="activity.activity">
-              <button class="interest-row" type="button" :disabled="navigationBusy" @click="openStory(activity)">
+              <button class="interest-row" type="button" :disabled="navigationBusy"
+                :aria-label="interestProgress[activity.activity] ? `${activity.name}. ${interestProgress[activity.activity].description}` : activity.name"
+                @click="openStory(activity)">
                 <span class="interest-row-icon" aria-hidden="true">{{ activityEmoji(activity.name) }}</span>
-                <span>{{ activity.name }}</span>
-                <span class="interest-row-arrow" aria-hidden="true">→</span>
+                <span class="interest-row-body">
+                  <span>{{ activity.name }}</span>
+                  <span v-if="interestProgress[activity.activity]" class="interest-progress-track" aria-hidden="true"
+                    :title="interestProgress[activity.activity].description">
+                    <span :style="{ width: `${interestProgress[activity.activity].percent}%` }"></span>
+                  </span>
+                </span>
+                <AppIcon class="interest-row-arrow" name="arrow-right" :size="23" />
               </button>
             </li>
           </ul>
+        </section>
+        <section v-if="account" class="account-danger" aria-label="Account deletion">
+          <button v-if="!showDeleteAccount" class="button button-danger-outline" type="button"
+            :disabled="navigationBusy" @click="toggleDeleteAccount">Delete account</button>
+          <MotionReveal :show="showDeleteAccount">
+            <form class="delete-account-form" @submit.prevent="deleteAccount">
+              <MotionReveal :show="Boolean(deleteError)">
+                <div class="notification error" role="alert">{{ deleteError }}</div>
+              </MotionReveal>
+              <label for="delete-confirmation">Type your username, <strong>{{ account }}</strong>, to confirm</label>
+              <input id="delete-confirmation" v-model="deleteConfirmation" autocomplete="off" :disabled="loading" required />
+              <label for="delete-password">Your password</label>
+              <input id="delete-password" v-model="deletePassword" type="password" autocomplete="current-password" :disabled="loading" required />
+              <div class="delete-account-actions">
+                <button class="button button-light" type="button" :disabled="loading" @click="toggleDeleteAccount">Cancel</button>
+                <button class="button button-primary" type="submit"
+                  :disabled="navigationBusy || deleteConfirmation !== account || !deletePassword">
+                  {{ loading ? "Deleting account…" : "Permanently delete account" }}
+                </button>
+              </div>
+            </form>
+          </MotionReveal>
         </section>
       </section>
 
       <!-- ACTIVITIES -->
       <section
         v-else-if="screen === 'activities'"
+        key="activities"
         class="explore-page"
       >
         <h1>What are you curious about?</h1>
 
         <div class="search-bar">
-          <span>⌕</span>
+          <AppIcon name="search" :size="23" />
 
           <input
             v-model="search"
@@ -540,7 +769,7 @@ onMounted(restoreAccount);
           <span>{{ filteredActivities.length }} activities</span>
         </div>
 
-        <div class="activity-grid">
+        <TransitionGroup name="motion-list" tag="div" class="activity-grid" @before-enter="restoreEnteringItem" @before-leave="freezeLeavingItem">
           <article
             v-for="activity in filteredActivities"
             :key="activity.activity"
@@ -566,10 +795,11 @@ onMounted(restoreAccount);
                 :aria-pressed="savedSubjects.has(activity.activity)"
                 @click="saveInterest(activity)"
               >
+                <AppIcon :name="savedSubjects.has(activity.activity) ? 'check' : 'plus'" :size="18" />
                 {{
                   savedSubjects.has(activity.activity)
-                    ? "✓ Interested"
-                    : "+ I'm interested"
+                    ? "Interested"
+                    : "I'm interested"
                 }}
               </button>
 
@@ -582,13 +812,14 @@ onMounted(restoreAccount);
                   loading
                     ? "Loading..."
                     : startedStories[activity.activity]
-                      ? "Continue story →"
-                      : "Start adventure →"
+                      ? "Continue story"
+                      : "Start adventure"
                 }}
+                <AppIcon v-if="!loading" name="arrow-right" />
               </button>
             </div>
           </article>
-        </div>
+        </TransitionGroup>
 
         <p
           v-if="filteredActivities.length === 0"
@@ -600,16 +831,22 @@ onMounted(restoreAccount);
       </section>
 
       <!-- STORY READER -->
-      <StoryReader
+      <div
         v-else-if="
           screen === 'story' &&
           selectedStory
         "
+        :key="`story:${selectedStory}`"
+      >
+      <StoryReader
+        :key="selectedStory"
         :story-id="selectedStory"
         :activity-name="selectedActivityName"
         @back="backToActivities"
         @busy="readerBusy = $event"
       />
+      </div>
+      </Transition>
     </main>
   </div>
 </template>

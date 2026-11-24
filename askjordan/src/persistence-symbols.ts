@@ -7,3 +7,4 @@
  */
 export const EXPORT_STATE = Symbol("export-state");
 export const RESTORE_STATE = Symbol("restore-state");
+export const REMOVE_USER_STATE = Symbol("remove-user-state");

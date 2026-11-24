@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { api, friendlyError, type ReflectionLimits, type WorkResponse } from "../api/client";
+import MotionReveal from "./MotionReveal.vue";
+import AppIcon from "./AppIcon.vue";
+import { freezeLeavingItem, restoreEnteringItem } from "../utils/motion";
 
 const props = defineProps<{ storyId: string }>();
 const emit = defineEmits<{ busy: [value: boolean] }>();
@@ -162,11 +165,14 @@ watch(() => props.storyId, () => {
   <section class="activity-work" aria-labelledby="work-heading" :aria-busy="busy">
     <h2 id="work-heading">Your work</h2>
     <p v-if="busy && !ready" role="status">Loading…</p>
-    <div v-if="error" class="notification error" role="alert">
+    <MotionReveal :show="Boolean(error)">
+    <div class="notification error" role="alert">
       <p>{{ error }}</p>
       <button v-if="!ready" class="button button-light" type="button" :disabled="busy" @click="load">Retry loading</button>
     </div>
-    <form v-if="ready" @submit.prevent="save">
+    </MotionReveal>
+    <MotionReveal :show="ready">
+    <form @submit.prevent="save">
       <label for="work-reflection">Your reflection</label>
       <textarea id="work-reflection" v-model="text" rows="4" :maxlength="limits.maxTextCharacters" :disabled="busy" placeholder="What did you try? What did you notice, and why?" @input="markEdited"></textarea>
 
@@ -175,15 +181,16 @@ watch(() => props.storyId, () => {
         <span>Up to {{ limits.maxImages }}</span>
       </div>
       <input id="work-photos" ref="fileInput" type="file" multiple :accept="limits.acceptedMimeTypes.join(',')" :disabled="busy || images.length >= limits.maxImages" @change="addPhotos" />
-      <div v-if="images.length" class="work-photos">
-        <figure v-for="(photo, index) in images" :key="index">
+      <TransitionGroup name="motion-list" tag="div" class="work-photos" @before-enter="restoreEnteringItem" @before-leave="freezeLeavingItem">
+        <figure v-for="(photo, index) in images" :key="`${photo}:${index}`">
           <img :src="photo" :alt="`Your work, photo ${index + 1}`" />
           <button class="button button-light" type="button" :disabled="busy" :aria-label="`Remove photo ${index + 1}`" @click="removePhoto(index)">Remove</button>
         </figure>
-      </div>
+      </TransitionGroup>
       <div class="work-actions">
-        <button class="button" :class="saved ? 'button-saved' : 'button-primary'" type="submit" :disabled="busy || !hasContent || saved" aria-live="polite">{{ saving ? "Saving…" : saved ? "Saved" : "Save" }}</button>
+        <button class="button" :class="saved ? 'button-saved' : 'button-primary'" type="submit" :disabled="busy || !hasContent || saved" aria-live="polite"><AppIcon v-if="saved" name="check" />{{ saving ? "Saving…" : saved ? "Saved" : "Save" }}</button>
       </div>
     </form>
+    </MotionReveal>
   </section>
 </template>

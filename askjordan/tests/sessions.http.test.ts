@@ -64,6 +64,8 @@ async function post(path: string, body: object, cookie?: string) {
 function sessionCookie(setCookie: string | null): string {
   expect(setCookie).toContain("ask-jordan-session=");
   expect(setCookie).toContain("HttpOnly");
+  expect(setCookie).toStartWith("__Host-ask-jordan-session=");
+  expect(setCookie).toContain("; Secure");
   return setCookie!.split(";")[0]!;
 }
 

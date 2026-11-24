@@ -150,6 +150,10 @@ function messageFor(code: string, status: number): string {
     PERSISTENCE_FAILED: "We couldn't confirm that your progress was saved. Reload before trying again.",
     INTERNAL_ERROR: "Something went wrong. Please try again.",
     FORBIDDEN: "This request is not allowed from this page.",
+    DELETE_CONFIRMATION_REQUIRED: "Type your username exactly to confirm account deletion.",
+    DELETE_PASSWORD_REQUIRED: "Enter your password to delete your account.",
+    DELETE_PASSWORD_INCORRECT: "That password isn't correct. Your account hasn't been deleted.",
+    ACCOUNT_DELETION_UNAVAILABLE: "We couldn't finish deleting your account. Please try again. If your session has ended, sign in again to retry.",
   };
 
   return messages[code] ?? "We couldn't complete that request. Please try again.";
@@ -178,10 +182,14 @@ async function post<T>(path: string, body: Record<string, unknown> = {}): Promis
   try {
     result = await response.json();
   } catch {
+    if (!response.ok) {
+      throw new ApiError("SERVER_UNAVAILABLE", response.status,
+        "Ask Jordan is temporarily unavailable. Please try again in a moment.");
+    }
     throw new ApiError(
       "INVALID_RESPONSE",
       response.status,
-      "The server sent an unreadable response. Please try loading again.",
+      "We couldn't load that information. Please try again.",
     );
   }
 
@@ -211,6 +219,9 @@ async function post<T>(path: string, body: Record<string, unknown> = {}): Promis
 export const progressiveEnabled = import.meta.env.VITE_PROGRESSIVE_STORIES !== "false";
 
 export const api = {
+  deleteAccount(password: string, confirmation: string) {
+    return post<{ deleted: boolean }>("/account/delete", { password, confirmation });
+  },
   register(username: string, password: string) {
     return post<{ account: string }>("/auth/register", { username, password });
   },

@@ -4,6 +4,7 @@ import type {
   StoryChapterContext,
   StoryGenerator,
 } from "./StoryGenerator.ts";
+import { STORY_PASSAGE_STYLE } from "./storyStyle.ts";
 
 type OpenAIStoryGeneratorOptions = {
   apiKey?: string;
@@ -195,7 +196,7 @@ Help a student experience an unfamiliar activity through
 an engaging fictional adventure. Never assess their talent.
 
 STORY STYLE:
-- Write 100-180 words of narrative in two or three short paragraphs.
+- Write 100-150 words of narrative in 3-5 short paragraphs.
 - Ask one concise open-ended why question without redundant instructions.
 - Use null choices for open-ended questions. Optional choices are only for a genuinely applicable closed decision; provide 2-4 distinct, meaningful answers of at most 200 characters. Never attach choices to a why question.
 - Use Alex as the protagonist and Jordan as the guide throughout all three chapters.
@@ -208,6 +209,8 @@ STORY STYLE:
   activities requiring expensive equipment.
 
 PERSONALIZATION:
+${STORY_PASSAGE_STYLE}
+
 - The selected Activity is the central subject.
 - Use the student's context when relevant.
 - Chapter 2 MUST follow the decision in the first answer.

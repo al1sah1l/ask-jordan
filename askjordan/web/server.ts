@@ -2,10 +2,11 @@
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import vue from "@vitejs/plugin-vue";
+import { canonicalLocalOrigin, localSessionProxy } from "./local-session-proxy.ts";
 
 const server = await createServer({
   root: fileURLToPath(new URL(".", import.meta.url)),
-  plugins: [vue()],
+  plugins: [canonicalLocalOrigin(), vue()],
 
   server: {
     host: "127.0.0.1",
@@ -13,10 +14,7 @@ const server = await createServer({
     strictPort: true,
 
     proxy: {
-      "/api": {
-        target: "http://127.0.0.1:3000",
-        changeOrigin: false,
-      },
+      "/api": localSessionProxy(),
     },
   },
 });

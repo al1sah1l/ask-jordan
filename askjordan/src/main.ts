@@ -7,6 +7,8 @@ import { db } from "./db.ts";
 import { policy } from "./http.ts";
 import { ApplicationPersistence } from "./persistence.ts";
 import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
+import { createAccountDeletionHandler } from "./accountDeletionHttp.ts";
+import { ApplicationRequestGate } from "./applicationRequestGate.ts";
 
 const application = assembleApplication();
 const persistence = new ApplicationPersistence(db);
@@ -28,6 +30,8 @@ const httpApi = createHttpHandler({
 });
 
 const progressiveHttp = createProgressiveHttpHandler(application, db, persistence);
+const deleteAccount = createAccountDeletionHandler(application, db, persistence);
+const requests = new ApplicationRequestGate();
 
 const persistentPaths = new Set([
   "/api/interests/preference",
@@ -46,6 +50,11 @@ const progressivePaths = new Set([
 ]);
 
 async function api(request: Request): Promise<Response> {
+  const isDeletion = new URL(request.url).pathname === "/api/account/delete";
+  return requests.run(() => isDeletion ? deleteAccount(request) : existingApi(request), isDeletion);
+}
+
+async function existingApi(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname;
 
   // Progressive HTTP handler persists its own mutations.

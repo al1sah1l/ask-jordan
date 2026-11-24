@@ -43,6 +43,7 @@ export type PersistableConcepts = {
   stories: StoryGenerationConcept;
   explorations: ExplorationTrackingConcept;
   progressive: ProgressiveStoryEngine;
+  suggestions: InterestGenerationConcept;
 };
 
 const persistenceInstances = new WeakMap<object, PersistableConcepts>();
@@ -109,6 +110,7 @@ export function assembleApplication(
   );
 
   const explorationTracking = overrides.ExplorationTracking ?? new ExplorationTrackingConcept();
+  const interestGeneration = overrides.InterestGeneration ?? new InterestGenerationConcept();
 
   const application = assemble({
     conceptSet: applicationConceptSet,
@@ -119,7 +121,7 @@ export function assembleApplication(
       AvatarCustomizing: overrides.AvatarCustomizing ?? new AvatarCustomizingConcept(database),
       InterestCollection: interestCollection,
       ExplorationTracking: explorationTracking,
-      InterestGeneration: overrides.InterestGeneration ?? new InterestGenerationConcept(),
+      InterestGeneration: interestGeneration,
       StoryGeneration: storyGeneration,
       Reflecting: reflecting,
     },
@@ -137,6 +139,7 @@ export function assembleApplication(
     stories: storyGeneration,
     explorations: explorationTracking,
     progressive,
+    suggestions: interestGeneration,
   });
 
   return application;

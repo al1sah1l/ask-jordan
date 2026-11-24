@@ -3,6 +3,7 @@ import type {
   ProgressiveContentGenerator,
   ChapterGenerationInput,
 } from "../learning/ProgressiveStoryEngine.ts";
+import { STORY_PASSAGE_STYLE } from "./storyStyle.ts";
 
 import type {
   ProgressiveChapter,
@@ -283,11 +284,11 @@ GENERAL RULES
 BEGIN STAGE
 - Generate ONE new chapter of an ongoing story.
 - Teach one focused concept, with an accurate explanation
-  and 1-6 useful terms.
+  and 2-3 useful terms.
 - Use earlier chapters and reflections to increase depth.
 - Avoid repeating concepts already explored.
 - For chapter 1, start with fundamentals.
-- Write an introduction of about 100-170 words.
+- Write an introduction of 100-150 words.
 - End at the first meaningful decision.
 - Provide a concise question, with 2-4 distinct options
   when appropriate, otherwise null options.
@@ -296,17 +297,19 @@ BEGIN STAGE
 MIDDLE STAGE
 - Continue the SAME chapter.
 - Show the specific consequence of the first decision.
-- Write a scene of about 80-140 words.
+- Write a scene of 100-150 words.
 - Use the chapter's theory in the events.
 - End with a second meaningful decision.
 - Return the next question, not another chapter.
 
 END STAGE
 - Show the specific consequence of the second decision.
-- Write a satisfying conclusion of about 100-160 words.
+- Write a satisfying conclusion of 100-150 words.
 - Resolve this chapter's storyline.
 - Provide ONE practical challenge based on its theory.
 - Do not generate another chapter yet.
+
+${STORY_PASSAGE_STYLE}
 `.trim();
 
 export class OpenAIProgressiveGenerator

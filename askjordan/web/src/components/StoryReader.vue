@@ -3,6 +3,7 @@
 import { ref, watch } from "vue";
 import LegacyStoryReader from "./LegacyStoryReader.vue";
 import ProgressiveStoryReader from "./ProgressiveStoryReader.vue";
+import AppIcon from "./AppIcon.vue";
 import { api, ApiError, friendlyError } from "../api/client";
 
 const props = defineProps<{ storyId: string; activityName: string }>();
@@ -51,6 +52,7 @@ watch(() => props.storyId, () => { void detectStory(); }, { immediate: true });
 </script>
 
 <template>
+  <Transition name="app-screen" mode="out-in" @before-enter="element => element.removeAttribute('inert')" @before-leave="element => element.setAttribute('inert', '')">
   <section v-if="mode === 'loading'" class="story-reader">
     <p class="story-loading" role="status">Loading your adventure...</p>
   </section>
@@ -58,7 +60,7 @@ watch(() => props.storyId, () => { void detectStory(); }, { immediate: true });
   <section v-else-if="mode === 'error'" class="story-reader">
     <div class="notification error" role="alert">{{ error }}</div>
     <button class="button button-light" type="button" @click="detectStory">Retry loading</button>
-    <button class="button button-light" type="button" @click="emit('back')">← Activities</button>
+    <button class="button button-light" type="button" @click="emit('back')"><AppIcon name="arrow-left" /> Activities</button>
   </section>
 
   <ProgressiveStoryReader
@@ -76,4 +78,5 @@ watch(() => props.storyId, () => { void detectStory(); }, { immediate: true });
     @back="emit('back')"
     @busy="setBusy"
   />
+  </Transition>
 </template>

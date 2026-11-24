@@ -12,6 +12,7 @@ import type {
 } from "../ai/InterestGenerator.ts";
 
 import { OpenAIInterestGenerator } from "../ai/OpenAIInterestGenerator.ts";
+import { REMOVE_USER_STATE } from "../persistence-symbols.ts";
 
 export class NoActivitiesAvailable extends Error {}
 export class SuggestionNotFound extends Error {}
@@ -30,6 +31,13 @@ export class InterestGenerationConcept {
 
   // Used to prevent older overlapping requests from overwriting newer ones.
   private readonly revisions = new Map<string, number>();
+
+  [REMOVE_USER_STATE](user: string): void {
+    for (const [id, suggestion] of this.suggestions) {
+      if (suggestion.user === user) this.suggestions.delete(id);
+    }
+    this.revisions.delete(user);
+  }
 
   constructor(
     private readonly freshID: () => string = () => crypto.randomUUID(),

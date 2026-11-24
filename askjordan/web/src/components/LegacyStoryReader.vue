@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import ActivityWork from "./ActivityWork.vue";
+import MotionReveal from "./MotionReveal.vue";
+import NarrativePassage from "./NarrativePassage.vue";
+import AppIcon from "./AppIcon.vue";
 import { api, friendlyError, type Chapter } from "../api/client";
 
 const props = defineProps<{ storyId: string; activityName: string }>();
@@ -113,7 +116,7 @@ watch(() => props.storyId, () => {
       :disabled="navigationBusy"
       @click="emit('back')"
     >
-      ← Activities
+      <AppIcon name="arrow-left" /> Activities
     </button>
 
     <div class="story-heading">
@@ -131,15 +134,10 @@ watch(() => props.storyId, () => {
         <span>{{ chapters.length }} of 3 chapters</span>
       </div>
 
-      <div class="story-progress-steps">
-        <div
-          v-for="step in 3"
-          :key="step"
-          class="story-progress-step"
-          :class="{
-            completed: step <= chapters.length,
-          }"
-        ></div>
+      <div class="story-progress-track" role="progressbar" aria-label="Story progress"
+        :aria-valuenow="Math.round(chapters.length / 3 * 100)" aria-valuemin="0" aria-valuemax="100"
+        :aria-valuetext="`${chapters.length} of 3 chapters`">
+        <div class="story-progress-fill" :style="{ width: `${chapters.length / 3 * 100}%` }"></div>
       </div>
     </div>
 
@@ -147,15 +145,19 @@ watch(() => props.storyId, () => {
       Loading your adventure...
     </p>
 
-    <div v-if="error" class="notification error" role="alert">
+    <MotionReveal :show="Boolean(error)">
+    <div class="notification error" role="alert">
       <p>{{ error }}</p>
       <button class="button button-light" :disabled="navigationBusy" @click="loadStory">Retry loading story</button>
     </div>
-    <p v-if="notice" class="notification success" role="status">{{ notice }}</p>
+    </MotionReveal>
+    <MotionReveal :show="Boolean(notice)">
+      <p class="notification success" role="status">{{ notice }}</p>
+    </MotionReveal>
     <p v-if="loading && chapters.length" class="story-loading" role="status">Checking your saved adventure…</p>
     <p v-if="pendingRefresh" class="story-loading">Checking whether your answer was saved before you continue.</p>
 
-    <div class="story-chapters">
+    <TransitionGroup name="motion-list" tag="div" class="story-chapters">
       <article
         v-for="chapter in chapters"
         :key="chapter.position"
@@ -179,7 +181,7 @@ watch(() => props.storyId, () => {
           }}
         </h2>
 
-        <p v-for="(paragraph, index) in chapter.text.split(/\n\s*\n/)" :key="index" class="chapter-narrative">{{ paragraph }}</p>
+        <NarrativePassage :text="chapter.text" />
 
         <div
           v-if="chapter.answer"
@@ -194,7 +196,7 @@ watch(() => props.storyId, () => {
           v-if="chapter.suggestedActivity"
           class="story-challenge"
         >
-          <span class="story-challenge-icon">★</span>
+          <span class="story-challenge-icon" aria-hidden="true">⭐</span>
 
           <div>
             <h3>Your mini challenge!</h3>
@@ -204,10 +206,10 @@ watch(() => props.storyId, () => {
           </div>
         </div>
       </article>
-    </div>
+    </TransitionGroup>
 
+    <MotionReveal :show="canContinue">
     <form
-      v-if="canContinue"
       class="story-answer-card"
       @submit.prevent="continueStory"
     >
@@ -239,18 +241,20 @@ watch(() => props.storyId, () => {
         {{
           loading
             ? "Creating your next chapter..."
-            : "Continue →"
+            : "Continue"
         }}
+        <AppIcon v-if="!loading" name="arrow-right" />
       </button>
     </form>
+    </MotionReveal>
 
-    <ActivityWork v-if="isFinished" :story-id="storyId" @busy="setWorkBusy" />
+    <MotionReveal :show="isFinished">
+    <ActivityWork :story-id="storyId" @busy="setWorkBusy" />
 
     <div
-      v-if="isFinished"
       class="story-complete-card"
     >
-      <div class="story-complete-icon">★</div>
+      <div class="story-complete-icon" aria-hidden="true">⭐</div>
 
       <h2>You reached the story ending!</h2>
 
@@ -261,8 +265,9 @@ watch(() => props.storyId, () => {
         :disabled="navigationBusy"
         @click="emit('back')"
       >
-        Explore more activities →
+        Explore more activities <AppIcon name="arrow-right" />
       </button>
     </div>
+    </MotionReveal>
   </section>
 </template>
