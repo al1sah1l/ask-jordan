@@ -19,7 +19,7 @@ Our goal is not to assess students' abilities or recommend a single career path.
 
 ### Screen Recording
 
-**Narrated demo:** To be added after recording.
+**Narrated demo:** [Watch the Ask Jordan demo on Loom](https://www.loom.com/share/670242d05c6d45268af0f5a433f2b172).
 
 ### Alpha Features
 
