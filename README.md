@@ -15,7 +15,7 @@ Our goal is not to assess students' abilities or recommend a single career path.
 
 ### Deployed Application
 
-**Public URL:** To be added after deployment.
+**Public URL:** https://askjordan.mit-sdg.dev/
 
 ### Screen Recording
 

@@ -1,4 +1,5 @@
 {
+  "name": "askjordan",
   "private": true,
   "type": "module",
   "dependencies": {
