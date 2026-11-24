@@ -70,6 +70,8 @@ async function api(request: Request): Promise<Response> {
   }
 }
 
+const dist = `${import.meta.dir}/../web/dist`;
+
 const server = Bun.serve({
   hostname: process.env.HOST ?? "127.0.0.1",
   port: Number(process.env.PORT ?? 3000),
@@ -91,6 +93,17 @@ const server = Bun.serve({
         );
       }
     },
+  },
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.hostname === "localhost") {
+      url.hostname = "127.0.0.1";
+      return Response.redirect(url.toString(), 302);
+    }
+    const target = url.pathname === "/" ? "/index.html" : url.pathname;
+    const file = Bun.file(dist + target);
+    return new Response((await file.exists()) ? file : Bun.file(`${dist}/index.html`));
   },
 });
 
