@@ -6,6 +6,6 @@
   ],
   "scripts": {
     "build": "bun run --cwd askjordan build",
-    "start": "bun run --parallel start:backend start:frontend"
+    "start": "bun run --cwd askjordan start"
   }
 }
