@@ -83,6 +83,29 @@ h3 {
 
 /* HEADER */
 
+.story-profile {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 24px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+}
+
+.story-profile-content {
+  max-width: 850px;
+  margin: 0 auto;
+  overflow-wrap: anywhere;
+}
+
+.story-profile p {
+  max-height: 25dvh;
+  margin: 4px 0 0;
+  overflow-y: auto;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
 .site-header {
   min-height: 86px;
   padding: 16px max(24px, calc((100vw - 1120px) / 2));

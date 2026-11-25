@@ -32,6 +32,7 @@ import {
 import {
   openTestDb,
 } from "./test-db.ts";
+import { createProgressiveGenerator } from "../src/ai/createProgressiveGenerator.ts";
 
 import type {
   ProgressiveContentGenerator,
@@ -82,6 +83,56 @@ const generator: ProgressiveContentGenerator = {
     };
   },
 };
+
+test("prepared progressive stories use saved profile edits and retain answers and ending after restart", async () => {
+  const database = await openTestDb();
+  try {
+    const prepared = createProgressiveGenerator({ mode: "prepared", apiKey: "" });
+    const app = assembleApplication(database.db, undefined, { ProgressiveContentGenerator: prepared });
+    const catalog = await seedCatalog(app);
+    const accounts = new AccountConcept(database.db);
+    await accounts.createAccount({ user: "student", name: "Sam", about: "I enjoy puzzles." });
+    const { session } = await new SessioningConcept(database.db).start({ user: "student" });
+    const persistence = new ApplicationPersistence(database.db);
+    const handle = createProgressiveHttpHandler(app, database.db, persistence);
+    async function post(path: string, body: Record<string, unknown>) {
+      const response = await handle(new Request(`http://127.0.0.1:3000/api/stories/progressive/${path}`, {
+        method: "POST",
+        headers: { Origin: "http://127.0.0.1:8080", "Content-Type": "application/json", Cookie: `__Host-ask-jordan-session=${session}` },
+        body: JSON.stringify(body),
+      }));
+      expect(response.status).toBe(200);
+      return response.json() as Promise<Record<string, any>>;
+    }
+    const first = await post("start", { activity: catalog.activities[0]!.activity, context: "Forged description" });
+    await accounts.updateProfile({ user: "student", name: "Sam", about: "I now enjoy music." });
+    const second = await post("start", { activity: catalog.activities[1]!.activity });
+    await post("choice", { ...first, answer: "Follow the player", expectedStage: "first-choice" });
+    await post("choice", { ...first, answer: "Show a close detail", expectedStage: "second-choice" });
+    const before = await post("get", { story: first.story });
+
+    const restarted = assembleApplication(database.db, undefined, { ProgressiveContentGenerator: prepared });
+    expect(await persistence.restore(restarted)).toBe(true);
+    const reader = createProgressiveHttpHandler(restarted, database.db, persistence);
+    const response = await reader(new Request("http://127.0.0.1:3000/api/stories/progressive/get", {
+      method: "POST",
+      headers: { Origin: "http://127.0.0.1:8080", "Content-Type": "application/json", Cookie: `__Host-ask-jordan-session=${session}` },
+      body: JSON.stringify({ story: first.story }),
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(before);
+    const { progressive } = getPersistenceConcepts(restarted);
+    const saved = progressive.getStory({ user: "student", story: first.story });
+    expect(saved.context).toBe("I enjoy puzzles.");
+    expect(saved.chapters[0]!.firstDecision?.answer).toBe("Follow the player");
+    expect(saved.chapters[0]!.secondDecision?.answer).toBe("Show a close detail");
+    expect(saved.chapters[0]!.conclusion).toBeTruthy();
+    expect(saved.chapters[0]!.practicalChallenge).toBeTruthy();
+    expect(progressive.getStory({ user: "student", story: second.story }).context).toBe("I now enjoy music.");
+  } finally {
+    await database.close();
+  }
+});
 
 test(
   "progressive start is authenticated and durable",

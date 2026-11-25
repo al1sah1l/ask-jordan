@@ -42,7 +42,10 @@ An authenticated student
 for a selected activity.
 
 The student's profile description is retrieved from Account
-and supplied as the story's personalization context.
+on every start request and supplied as the story's personalization context.
+The browser supplies only the selected activity, never an authoritative profile
+description. New stories use the latest saved description, including an empty
+description; existing stories continue using their original context snapshot.
 
 When a story is generated, the existing
 StoryCreatedStartsExploration reaction starts its exploration.
@@ -77,6 +80,39 @@ through the [explorations for a user](former:InterestApi.StoryExploring.Explorat
 
 Only stories and explorations belonging to the authenticated
 student can be retrieved or changed.
+
+### Story Experience
+
+While reading either story format, the student's current saved display name and
+description remain visible in a sticky profile panel, including while loading or
+reporting an error. Long descriptions wrap and can be scrolled within the panel;
+an empty description shows “No description saved yet.” Profile edits update this
+panel without regenerating existing chapters.
+
+Opening a story records only its identifier in the URL. Refresh authenticates the
+session, reloads the saved profile, catalog, and story summaries, and reopens that
+story only if it belongs to the authenticated student's saved list and its activity
+is available. An unknown or foreign identifier returns to Activities. Returning to
+Activities or signing out removes the identifier. MongoDB remains authoritative
+for chapters, accepted answers, and endings; the URL contains navigation state only.
+
+The default progressive flow uses the saved description when starting a story and
+retains that snapshot for subsequent chapters. Each chapter has an introduction,
+two decisions and consequences, a conclusion, and a practical challenge. Previous
+chapters retain all narrative passages, questions, accepted answers, conclusions,
+and challenges in expandable history. Saved narrative remains readable even when
+a separate reflection read fails. Reading saved content does not call a model.
+
+Progressive generation defaults to auto: it uses prepared content without a key
+and attempts live generation with a key. Prepared mode makes no model calls.
+Explicit disabled mode refuses generation, and explicit live mode requires a key.
+In auto or live mode, model errors, timeouts, and unusable responses fall back to
+prepared content independently for the opening, either consequence, and later
+chapters. The prepared flow reuses the activity's two open-ended why questions and
+answer-dependent scenes, conclusion, and household-material challenge, alongside
+a planning/testing/reflection overview. Fallback preserves accepted choices and
+does not reset existing chapters. Both formats acknowledge successful mutations
+only after the existing persistence boundary has saved them.
 
 ```endpoints
 InterestApi.StoryExploring.StartStory at /stories/start
@@ -153,6 +189,10 @@ existing Topic, Activity, Story, and Exploration identifiers.
 The browser retrieves saved preferences and story summaries
 after authentication. It does not use browser-local storage
 as the authoritative source for student data.
+
+Refresh and backend restoration preserve chapter identities, all accepted answers,
+the ending or chapter conclusion, and the practical activity. Reopening reads saved
+content rather than generating it again. Unsubmitted answer drafts are not saved.
 
 ## Alpha scope
 

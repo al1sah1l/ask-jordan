@@ -96,6 +96,16 @@ async function refresh() {
 
   const oldChapter = latest.value;
   const newChapter = result.chapters.at(-1)!;
+  if (storyId !== props.storyId) return;
+
+  // Saved narrative remains readable even if a separate reflection read fails.
+  story.value = result;
+  if (!oldChapter || oldChapter.chapter !== newChapter.chapter ||
+      oldChapter.stage !== newChapter.stage) {
+    answer.value = "";
+    reflection.value = "";
+    photos.value = [];
+  }
   const completed = result.chapters.filter(chapter => chapter.stage === "reflected");
 
   const entries = await Promise.all(completed.map(async chapter => {
@@ -127,12 +137,6 @@ async function refresh() {
   savedEntries.value = nextSavedEntries;
   reflection.value = nextReflection;
   photos.value = nextPhotos;
-  story.value = result;
-
-  if (!oldChapter || oldChapter.chapter !== newChapter.chapter ||
-      oldChapter.stage !== newChapter.stage) {
-    answer.value = "";
-  }
 }
 
 async function load() {
@@ -355,9 +359,18 @@ watch(() => props.storyId, () => {
         :title="`Chapter ${chapter.position}: ${chapter.theory.topic}`">
 
         <p>{{ chapter.theory.explanation }}</p>
-        <p v-if="chapter.firstDecision"><strong>First choice:</strong> {{ chapter.firstDecision.answer }}</p>
-        <p v-if="chapter.secondDecision"><strong>Second choice:</strong> {{ chapter.secondDecision.answer }}</p>
-        <p v-if="chapter.conclusion">{{ chapter.conclusion }}</p>
+        <NarrativePassage :text="chapter.introduction" />
+        <div v-if="chapter.firstDecision" class="story-previous-answer">
+          <strong>{{ chapter.firstDecision.question }}</strong>
+          <p>Your saved answer: {{ chapter.firstDecision.answer }}</p>
+        </div>
+        <NarrativePassage v-if="chapter.secondScene" :text="chapter.secondScene" />
+        <div v-if="chapter.secondDecision" class="story-previous-answer">
+          <strong>{{ chapter.secondDecision.question }}</strong>
+          <p>Your saved answer: {{ chapter.secondDecision.answer }}</p>
+        </div>
+        <NarrativePassage v-if="chapter.conclusion" :text="chapter.conclusion" />
+        <p v-if="chapter.practicalChallenge"><strong>Your mini challenge:</strong> {{ chapter.practicalChallenge }}</p>
 
         <div
           v-if="savedEntry(chapter.chapter) &&

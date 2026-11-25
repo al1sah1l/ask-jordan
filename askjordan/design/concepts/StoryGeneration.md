@@ -5,6 +5,11 @@
 
 Help users explore an activity through a short personalized story with interactive questions and a small practical activity to try.
 
+This contract describes the original three-chapter format. The default Story
+Experience also supports progressive learning chapters through ProgressiveStoryEngine;
+both formats follow the profile, recovery, and prepared-content behavior described
+in the Interest API composition.
+
 ## Principle
 
 George chooses Songwriting and receives the first chapter of a story. His answer influences the next chapter, which asks another question. After he answers, the third and final chapter concludes the story and suggests a practical activity. George cannot generate another story for the same activity or continue a story beyond its third chapter. Other users cannot access or change his story.
@@ -52,6 +57,9 @@ Rule: Chapters have consecutive positions beginning with 1.
 Rule: Chapters 1 and 2 contain questions.
 Rule: Chapter 3 has no question and suggests a real-world activity.
 Rule: Each user has at most one Story for a given Activity.
+Rule: A Story captures the supplied context at creation. The application supplies the authenticated user's latest saved profile description, including an empty description; later profile edits do not rewrite existing Stories or their context.
+Rule: Generation uses prepared content when configured to do so or when a model request fails, times out, or produces unusable content. This applies independently to the opening, continuation, and ending; fallback uses the same Activity, context, and accepted answers.
+Rule: Saved chapter identities, text, questions, accepted answers, ending, and suggested activity remain readable in order after refresh and restoration, without model calls or replaying accepted answers.
 Rule: Prepared prompts default to short open-ended why questions with text answers and no choices. Choices are optional only for genuinely applicable future or live closed decisions and contain two to four meaningful answers. Chapter 3 has neither question nor choices.
 Rule: Choices belong to their question. Malformed supplied choices cause a coherent prepared open-ended why question without choices; never attach unrelated choices to a live question.
 Rule: On restore, recognized unanswered legacy prepared questions become their corresponding short open-ended why questions and lose choices. Answered historical chapters retain their original questions and accepted answers. This upgrade preserves chapter identities, story text, chapter order, and narrative state. Unrecognized questions retain their existing valid optional choice metadata.

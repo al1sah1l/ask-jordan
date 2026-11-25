@@ -5,6 +5,7 @@ import StoryReader from "./components/StoryReader.vue";
 import MotionReveal from "./components/MotionReveal.vue";
 import { freezeLeavingItem, restoreEnteringItem } from "./utils/motion";
 import { chapterProgress } from "./utils/storyProgress";
+import { savedStoryLocation, storyUrl } from "./utils/storyLocation";
 import AppIcon from "./components/AppIcon.vue";
 
 import {
@@ -145,6 +146,11 @@ async function loadCatalog() {
     ]),
   );
   void loadInterestProgress(storiesResponse.stories);
+  return storiesResponse.stories;
+}
+
+function rememberStory(storyId: string | null) {
+  window.history.replaceState(window.history.state, "", storyUrl(new URL(window.location.href), storyId));
 }
 
 async function loadInterestProgress(stories: StorySummary[]) {
@@ -173,8 +179,12 @@ async function loadProfileAndNavigate() {
     profileName.value = result.name;
     profileAbout.value = result.about;
 
-    await loadCatalog();
-    screen.value = "activities";
+    const stories = await loadCatalog();
+    const saved = savedStoryLocation(new URL(window.location.href), stories, activities.value);
+    selectedStory.value = saved?.storyId ?? null;
+    selectedActivityName.value = saved?.activityName ?? "";
+    rememberStory(selectedStory.value);
+    screen.value = saved ? "story" : "activities";
   } catch (err) {
     if (
       err instanceof ApiError &&
@@ -290,6 +300,7 @@ async function signOut() {
 }
 
 function clearAccountState() {
+    rememberStory(null);
     account.value = null;
     profile.value = null;
 
@@ -370,6 +381,7 @@ async function openStory(activity: Activity) {
 
     if (existing) {
       selectedStory.value = existing;
+      rememberStory(existing);
       screen.value = "story";
       return;
     }
@@ -384,11 +396,13 @@ async function openStory(activity: Activity) {
     };
 
     selectedStory.value = result.story;
+    rememberStory(result.story);
     screen.value = "story";
   });
 }
 
 async function backToActivities() {
+  rememberStory(null);
   selectedStory.value = null;
   selectedActivityName.value = "";
   error.value = "";
@@ -504,6 +518,13 @@ onMounted(restoreAccount);
         </button>
       </div>
     </header>
+
+    <aside v-if="screen === 'story' && profile" class="story-profile" aria-label="Your saved profile">
+      <div class="story-profile-content">
+        <strong>{{ profile.name }}</strong>
+        <p tabindex="0">{{ profile.about || "No description saved yet." }}</p>
+      </div>
+    </aside>
 
     <main class="main-content">
       <MotionReveal :show="Boolean(error) && screen !== 'auth' && screen !== 'account-error'">

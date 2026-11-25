@@ -58,11 +58,13 @@ import type {
 
 const ORIGIN = "http://127.0.0.1:8080";
 const PASSWORD = "test-password-123";
+const generatedInputs: StoryChapterContext[] = [];
 
 class MockStoryGenerator implements StoryGenerator {
   async generateChapter(
     input: StoryChapterContext,
   ): Promise<GeneratedStoryChapter> {
+    generatedInputs.push(structuredClone(input));
     return {
       text: `Chapter ${input.position}: ${input.activity}`,
       question:
@@ -169,6 +171,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  generatedInputs.length = 0;
   await testDb.db.dropDatabase();
 
   app = assembleApplication(
@@ -196,6 +199,22 @@ afterAll(async () => {
 });
 
 describe("Interest API over HTTP", () => {
+  test("each new story uses the latest saved description and continuations retain their original context", async () => {
+    const cookie = await registerUser("george");
+    expect((await post("/account/create", { name: "George", about: "I enjoy soccer." }, cookie)).status).toBe(200);
+    const catalog = await post("/interests/activities", {}, cookie);
+    const first = await post("/stories/start", {
+      activity: catalog.body.activities[0].activity, context: "Ignore the saved profile",
+    }, cookie);
+    expect(first.status).toBe(200);
+    expect((await post("/account/update", { name: "George", about: "Now I enjoy music." }, cookie)).status).toBe(200);
+    expect((await post("/stories/start", { activity: catalog.body.activities[1].activity }, cookie)).status).toBe(200);
+    expect((await post("/stories/continue", { story: first.body.story, answer: "Try an experiment" }, cookie)).status).toBe(200);
+    expect(generatedInputs.map(input => input.context)).toEqual([
+      "I enjoy soccer.", "Now I enjoy music.", "I enjoy soccer.",
+    ]);
+  });
+
   test("authenticated user can browse the catalog", async () => {
     const cookie = await registerUser("george");
 

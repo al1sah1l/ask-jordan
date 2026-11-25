@@ -241,7 +241,7 @@ Defined in [StoryGeneration](../design/concepts/StoryGeneration.md), line 2.
 
 ## Computations
 
-- `reflectionLimits() : ReflectionLimits` — [Interest API](../design/compositions/InterestApi.md), line 116.
+- `reflectionLimits() : ReflectionLimits` — [Interest API](../design/compositions/InterestApi.md), line 152.
 
 ## Formers
 
@@ -279,7 +279,7 @@ Former "catalog topics" — inputs (); bindings (topic, name, description); prom
 ### explorations for a user
 
 Authored path: `InterestApi.StoryExploring.ExplorationHistory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 76.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 79.
 
 ```former
 Former "explorations for a user" — inputs (user); bindings (exploration, story, status); promises exactly one record — forms:
@@ -458,8 +458,8 @@ then
 ### InterestApi.ActivityReflecting.GetReflection
 
 Authored path: `InterestApi.ActivityReflecting.GetReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 91.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 127.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 157.
 
 ```reaction
 when RequestBoundary.request (path: "/stories/reflection/get", requestId, session, story)
@@ -470,8 +470,8 @@ then
 ### InterestApi.ActivityReflecting.GetReflection#2
 
 Authored path: `InterestApi.ActivityReflecting.GetReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 91.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 127.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 157.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.ActivityReflecting.GetReflection
@@ -484,8 +484,8 @@ then
 ### InterestApi.ActivityReflecting.GetReflection#3
 
 Authored path: `InterestApi.ActivityReflecting.GetReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 91.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 127.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 157.
 
 ```reaction
 when StoryGeneration.getActivityChapter (story, user, chapter), asked by InterestApi.ActivityReflecting.GetReflection#2
@@ -496,8 +496,8 @@ then
 ### InterestApi.ActivityReflecting.GetReflection#4
 
 Authored path: `InterestApi.ActivityReflecting.GetReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 91.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 127.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 157.
 
 ```reaction
 when Reflecting.get (chapter, story, user, entry), asked by InterestApi.ActivityReflecting.GetReflection#3
@@ -512,8 +512,8 @@ then
 ### InterestApi.ActivityReflecting.SaveReflection
 
 Authored path: `InterestApi.ActivityReflecting.SaveReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 92.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 128.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 158.
 
 ```reaction
 when RequestBoundary.request (images, path: "/stories/reflection/save", requestId, session, story, text)
@@ -524,8 +524,8 @@ then
 ### InterestApi.ActivityReflecting.SaveReflection#2
 
 Authored path: `InterestApi.ActivityReflecting.SaveReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 92.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 128.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 158.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.ActivityReflecting.SaveReflection
@@ -538,8 +538,8 @@ then
 ### InterestApi.ActivityReflecting.SaveReflection#3
 
 Authored path: `InterestApi.ActivityReflecting.SaveReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 92.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 128.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 158.
 
 ```reaction
 when StoryGeneration.getActivityChapter (story, user, chapter), asked by InterestApi.ActivityReflecting.SaveReflection#2
@@ -552,8 +552,8 @@ then
 ### InterestApi.ActivityReflecting.SaveReflection#4
 
 Authored path: `InterestApi.ActivityReflecting.SaveReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 92.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 128.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 158.
 
 ```reaction
 when Reflecting.save (chapter, images, story, text, user, page), asked by InterestApi.ActivityReflecting.SaveReflection#3
@@ -564,8 +564,8 @@ then
 ### InterestApi.ActivityReflecting.SaveReflection#5
 
 Authored path: `InterestApi.ActivityReflecting.SaveReflection`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 92.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 128.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 158.
 
 ```reaction
 when Reflecting.get (chapter, story, user, entry), asked by InterestApi.ActivityReflecting.SaveReflection#4
@@ -698,8 +698,8 @@ then
 ### InterestApi.StoryExploring.ContinueStory
 
 Authored path: `InterestApi.StoryExploring.ContinueStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 63.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 85.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 66.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
 
 ```reaction
 when RequestBoundary.request (answer, expectedChapter, path: "/stories/continue", requestId, session, story)
@@ -710,8 +710,8 @@ then
 ### InterestApi.StoryExploring.ContinueStory#2
 
 Authored path: `InterestApi.StoryExploring.ContinueStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 63.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 85.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 66.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.StoryExploring.ContinueStory
@@ -724,8 +724,8 @@ then
 ### InterestApi.StoryExploring.ContinueStory#3
 
 Authored path: `InterestApi.StoryExploring.ContinueStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 63.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 85.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 66.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 121.
 
 ```reaction
 when StoryGeneration.continueStory (answer, expectedChapter, story, user, chapter), asked by InterestApi.StoryExploring.ContinueStory#2
@@ -738,8 +738,8 @@ then
 ### InterestApi.StoryExploring.GetExplorationHistory
 
 Authored path: `InterestApi.StoryExploring.GetExplorationHistory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 75.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 86.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 78.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
 
 ```reaction
 when RequestBoundary.request (path: "/explorations/history", requestId, session)
@@ -750,8 +750,8 @@ then
 ### InterestApi.StoryExploring.GetExplorationHistory#2
 
 Authored path: `InterestApi.StoryExploring.GetExplorationHistory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 75.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 86.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 78.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 122.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.StoryExploring.GetExplorationHistory
@@ -764,8 +764,8 @@ then
 ### InterestApi.StoryExploring.GetStories
 
 Authored path: `InterestApi.StoryExploring.GetStories`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 55.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 84.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 120.
 
 ```reaction
 when RequestBoundary.request (path: "/stories/list", requestId, session)
@@ -776,8 +776,8 @@ then
 ### InterestApi.StoryExploring.GetStories#2
 
 Authored path: `InterestApi.StoryExploring.GetStories`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 55.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 84.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 120.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.StoryExploring.GetStories
@@ -788,8 +788,8 @@ then
 ### InterestApi.StoryExploring.GetStories#3
 
 Authored path: `InterestApi.StoryExploring.GetStories`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 55.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 84.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 58.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 120.
 
 ```reaction
 when StoryGeneration.getStories (user, stories), asked by InterestApi.StoryExploring.GetStories#2
@@ -802,8 +802,8 @@ then
 ### InterestApi.StoryExploring.GetStory
 
 Authored path: `InterestApi.StoryExploring.GetStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 51.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 83.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 119.
 
 ```reaction
 when RequestBoundary.request (path: "/stories/get", requestId, session, story)
@@ -814,8 +814,8 @@ then
 ### InterestApi.StoryExploring.GetStory#2
 
 Authored path: `InterestApi.StoryExploring.GetStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 51.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 83.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 119.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.StoryExploring.GetStory
@@ -828,8 +828,8 @@ then
 ### InterestApi.StoryExploring.GetStory#3
 
 Authored path: `InterestApi.StoryExploring.GetStory`.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 51.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 83.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 54.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 119.
 
 ```reaction
 when StoryGeneration.getStory (story, user, chapters), asked by InterestApi.StoryExploring.GetStory#2
@@ -843,7 +843,7 @@ then
 
 Authored path: `InterestApi.StoryExploring.StartStory`.
 - Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 82.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 118.
 
 ```reaction
 when RequestBoundary.request (activity, path: "/stories/start", requestId, session)
@@ -855,7 +855,7 @@ then
 
 Authored path: `InterestApi.StoryExploring.StartStory`.
 - Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 82.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 118.
 
 ```reaction
 when Sessioning.current (session, user), asked by InterestApi.StoryExploring.StartStory
@@ -867,7 +867,7 @@ then
 
 Authored path: `InterestApi.StoryExploring.StartStory`.
 - Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 82.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 118.
 
 ```reaction
 when Account.getProfile (user, about), asked by InterestApi.StoryExploring.StartStory#2
@@ -881,7 +881,7 @@ then
 
 Authored path: `InterestApi.StoryExploring.StartStory`.
 - Covered by [Interest API](../design/compositions/InterestApi.md), line 41.
-- Covered by [Interest API](../design/compositions/InterestApi.md), line 82.
+- Covered by [Interest API](../design/compositions/InterestApi.md), line 118.
 
 ```reaction
 when StoryGeneration.generateStory (activity, context: about, user, chapter, story), asked by InterestApi.StoryExploring.StartStory#3

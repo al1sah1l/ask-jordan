@@ -136,6 +136,11 @@ test(
 
     expect(continued).toHaveProperty("chapter");
 
+    const finished = await first.concepts.StoryGeneration.continueStory({
+      user: "george", story: storyId, answer: "Finish with a wide shot.",
+    });
+    expect(finished).toHaveProperty("chapter");
+
     const originalChapters =
       await first.concepts.StoryGeneration.getStory({
         user: "george",
@@ -151,7 +156,7 @@ test(
       );
     }
 
-    expect(originalChapters.chapters).toHaveLength(2);
+    expect(originalChapters.chapters).toHaveLength(3);
 
     expect(originalChapters.chapters[0]).toEqual(
       expect.objectContaining({
@@ -243,13 +248,18 @@ test(
       throw new Error("Saved chapters were not returned.");
     }
 
-    expect(savedStory.chapters).toHaveLength(2);
+    expect(savedStory.chapters).toHaveLength(3);
 
     expect(savedStory.chapters[0]).toEqual(
       expect.objectContaining({
         answer: "I want to use a close-up shot.",
       }),
     );
+    expect(savedStory.chapters[1]).toEqual(expect.objectContaining({ answer: "Finish with a wide shot." }));
+    expect(savedStory.chapters[2]).toEqual(expect.objectContaining({
+      text: "George finishes his filmmaking project.",
+      suggestedActivity: "Film a 30-second scene using three camera angles.",
+    }));
 
     // ----------------------------------
     // 11. Verify exploration history
