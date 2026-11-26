@@ -23,7 +23,7 @@ async function post(path: string, body: Record<string, unknown> = {}, cookie?: s
   return { status: response.status, body: await response.json() as Record<string, any>, cookie: response.headers.get("set-cookie")?.split(";")[0] };
 }
 async function register(username: string) {
-  const result = await post("/auth/register", { username, password: "test-password-123" });
+  const result = await post("/auth/register", { username, email: `${username}@example.com`, password: "test-password-123" });
   expect(result.status).toBe(200);
   await app.concepts.Account.createAccount({ user: username, name: username, about: "" });
   return result.cookie!;

@@ -22,6 +22,7 @@ const { policy } = await import("../src/http.ts");
 
 const ORIGIN = "http://127.0.0.1:8080";
 const USERNAME = "sam";
+const EMAIL = "sam@example.com";
 const PASSWORD = "long-enough";
 
 let testDb: TestDb;
@@ -74,7 +75,7 @@ function sessionCount(): Promise<number> {
 }
 
 test("register then current returns the same account", async () => {
-  const registered = await post("/auth/register", { username: USERNAME, password: PASSWORD });
+  const registered = await post("/auth/register", { username: USERNAME, email: EMAIL, password: PASSWORD });
   expect(registered.status).toBe(200);
   expect(registered.body).toEqual({ account: USERNAME });
   const cookie = sessionCookie(registered.setCookie);
@@ -85,7 +86,7 @@ test("register then current returns the same account", async () => {
 });
 
 test("sign-in with the right password starts a new session", async () => {
-  const registered = await post("/auth/register", { username: USERNAME, password: PASSWORD });
+  const registered = await post("/auth/register", { username: USERNAME, email: EMAIL, password: PASSWORD });
   const first = sessionCookie(registered.setCookie);
 
   const signedIn = await post("/auth/sign-in", { username: USERNAME, password: PASSWORD });
@@ -100,7 +101,7 @@ test("sign-in with the right password starts a new session", async () => {
 });
 
 test("a wrong password is refused and starts no session", async () => {
-  await post("/auth/register", { username: USERNAME, password: PASSWORD });
+  await post("/auth/register", { username: USERNAME, email: EMAIL, password: PASSWORD });
   expect(await sessionCount()).toBe(1);
 
   const refused = await post("/auth/sign-in", { username: USERNAME, password: "not-the-password" });
@@ -111,7 +112,7 @@ test("a wrong password is refused and starts no session", async () => {
 });
 
 test("after sign-out, current and a second sign-out are refused", async () => {
-  const registered = await post("/auth/register", { username: USERNAME, password: PASSWORD });
+  const registered = await post("/auth/register", { username: USERNAME, email: EMAIL, password: PASSWORD });
   const cookie = sessionCookie(registered.setCookie);
 
   const signedOut = await post("/auth/sign-out", {}, cookie);

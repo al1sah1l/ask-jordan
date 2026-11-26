@@ -6,7 +6,10 @@ import sessioningSpec from "@design/concepts/Sessioning.md" with { type: "text" 
 import { AccountConcept, BlankName, NoProfile, ProfileExists } from "./concepts/Account.ts";
 import {
   AuthenticatingConcept,
+  EmailTaken,
   InvalidCredentials,
+  InvalidEmail,
+  InvalidRecovery,
   InvalidUsername,
   UsernameTaken,
   WeakPassword,
@@ -32,9 +35,12 @@ const authenticating = registerConcept({
   spec: authenticatingSpec,
   refusals: {
     INVALID_USERNAME: InvalidUsername,
+    INVALID_EMAIL: InvalidEmail,
     WEAK_PASSWORD: WeakPassword,
     USERNAME_TAKEN: UsernameTaken,
+    EMAIL_TAKEN: EmailTaken,
     INVALID_CREDENTIALS: InvalidCredentials,
+    INVALID_RECOVERY: InvalidRecovery,
   },
 });
 

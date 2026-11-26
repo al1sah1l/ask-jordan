@@ -427,6 +427,24 @@ h3 {
   margin-bottom: 0;
 }
 
+.auth-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-link:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .auth-card p {
   margin: 0 0 16px;
   color: var(--text-muted);

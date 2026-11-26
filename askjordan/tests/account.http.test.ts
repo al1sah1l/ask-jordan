@@ -60,7 +60,7 @@ async function post(path: string, body: object, cookie?: string) {
 }
 
 async function signIn(): Promise<string> {
-  const registered = await post("/auth/register", { username: USERNAME, password: PASSWORD });
+  const registered = await post("/auth/register", { username: USERNAME, email: `${USERNAME}@example.com`, password: PASSWORD });
   expect(registered.status).toBe(200);
   expect(registered.setCookie).toContain("ask-jordan-session=");
   return registered.setCookie!.split(";")[0]!;
@@ -134,7 +134,7 @@ test("blank update preserves saved profile; profile survives reassembly", async 
 test("session owns profile despite attempted user spoofing", async () => {
   const cookie = await signIn();
   await post("/account/create", { name: "Sam", about: "private" }, cookie);
-  const other = await post("/auth/register", { username: "riley", password: PASSWORD });
+  const other = await post("/auth/register", { username: "riley", email: "riley@example.com", password: PASSWORD });
   const otherCookie = other.setCookie!.split(";")[0]!;
   expect((await post("/account/profile", { user: USERNAME }, otherCookie)).status).toBe(404);
   expect((await post("/account/update", { user: USERNAME, name: "Intruder", about: "changed" }, otherCookie)).status).toBe(404);

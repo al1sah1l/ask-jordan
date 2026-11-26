@@ -1,7 +1,8 @@
 /**
  * Registering, signing in and out, and resolving the current user.
  *
- * Authenticating proves an account, which is its username. Sessioning holds an
+ * Authenticating proves an account. Registering uses a username, email, and
+ * password. Signing in uses the username and password. Sessioning holds an
  * opaque session for that user. Neither concept names the other; they meet here.
  */
 import { endpoint, receive, respond } from "@mit-sdg/sync-engine/boundary";
@@ -11,12 +12,12 @@ const { Authenticating, Sessioning } = concepts;
 
 const Register = endpoint(
   "/auth/register",
-  ({ username, password, account, session, expiresAt }) =>
-    receive({ username, password })
-      .then(Authenticating.register({ username, password }).responds({ account }))
+  ({ username, email, password, account, session, expiresAt }) =>
+    receive({ username, email, password })
+      .then(Authenticating.register({ username, email, password }).responds({ account }))
       .then(Sessioning.start({ user: account }).responds({ session, expiresAt }))
       .then(respond({ account, session, expiresAt })),
-  { input: { required: ["username", "password"] } },
+  { input: { required: ["username", "email", "password"] } },
 );
 
 const SignIn = endpoint(

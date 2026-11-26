@@ -34,12 +34,19 @@ Defined in [Authenticating](../design/concepts/Authenticating.md), line 1.
 
 #### Actions
 
-- `register(username: String, password: String) : returns (account: Account)`
+- `register(username: String, email: String, password: String) : returns (account: Account)`
   - Refuses `INVALID_USERNAME`: A username must contain 3 to 32 letters, numbers, underscores, or hyphens.
+  - Refuses `INVALID_EMAIL`: Enter a valid email address.
   - Refuses `WEAK_PASSWORD`: A password must contain 8 to 128 characters.
   - Refuses `USERNAME_TAKEN`: That username is already registered.
+  - Refuses `EMAIL_TAKEN`: That email is already registered.
 - `authenticate(username: String, password: String) : returns (account: Account)`
   - Refuses `INVALID_CREDENTIALS`: The username or password is incorrect.
+- `requestRecovery(email: String) : returns (token: String)`
+  - Refuses `INVALID_EMAIL`: Enter a valid email address.
+- `resetPassword(token: String, password: String) : returns (account: Account)`
+  - Refuses `INVALID_RECOVERY`: That reset link is invalid or has expired.
+  - Refuses `WEAK_PASSWORD`: A password must contain 8 to 128 characters.
 
 #### Instances
 
@@ -1090,8 +1097,8 @@ then
 ### Sessions.CurrentAccount.CurrentUser
 
 Authored path: `Sessions.CurrentAccount.CurrentUser`.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 17.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 21.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 18.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 22.
 
 ```reaction
 when RequestBoundary.request (path: "/auth/current", requestId, session)
@@ -1102,8 +1109,8 @@ then
 ### Sessions.CurrentAccount.CurrentUser#2
 
 Authored path: `Sessions.CurrentAccount.CurrentUser`.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 17.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 21.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 18.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 22.
 
 ```reaction
 when Sessioning.current (session, user: account), asked by Sessions.CurrentAccount.CurrentUser
@@ -1117,22 +1124,22 @@ then
 
 Authored path: `Sessions.EnteringApplication.Register`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 7.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
 
 ```reaction
-when RequestBoundary.request (password, path: "/auth/register", requestId, username)
+when RequestBoundary.request (email, password, path: "/auth/register", requestId, username)
 then
-  Authenticating.register (password, username)
+  Authenticating.register (email, password, username)
 ```
 
 ### Sessions.EnteringApplication.Register#2
 
 Authored path: `Sessions.EnteringApplication.Register`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 7.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
 
 ```reaction
-when Authenticating.register (password, username, account), asked by Sessions.EnteringApplication.Register
+when Authenticating.register (email, password, username, account), asked by Sessions.EnteringApplication.Register
 then
   Sessioning.start (user: account)
 ```
@@ -1141,12 +1148,12 @@ then
 
 Authored path: `Sessions.EnteringApplication.Register`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 7.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 13.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
 
 ```reaction
 when Sessioning.start (user: account, expiresAt, session), asked by Sessions.EnteringApplication.Register#2
 where
-  earlier, RequestBoundary.request (password, path: "/auth/register", requestId, username)
+  earlier, RequestBoundary.request (email, password, path: "/auth/register", requestId, username)
 then
   RequestBoundary.respond (account, expiresAt, requestId, session)
 ```
@@ -1155,7 +1162,7 @@ then
 
 Authored path: `Sessions.EnteringApplication.SignIn`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 8.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 15.
 
 ```reaction
 when RequestBoundary.request (password, path: "/auth/sign-in", requestId, username)
@@ -1167,7 +1174,7 @@ then
 
 Authored path: `Sessions.EnteringApplication.SignIn`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 8.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 15.
 
 ```reaction
 when Authenticating.authenticate (password, username, account), asked by Sessions.EnteringApplication.SignIn
@@ -1179,7 +1186,7 @@ then
 
 Authored path: `Sessions.EnteringApplication.SignIn`.
 - Covered by [Sessions](../design/compositions/Sessions.md), line 8.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 14.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 15.
 
 ```reaction
 when Sessioning.start (user: account, expiresAt, session), asked by Sessions.EnteringApplication.SignIn#2
@@ -1192,8 +1199,8 @@ then
 ### Sessions.LeavingApplication.SignOut
 
 Authored path: `Sessions.LeavingApplication.SignOut`.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 24.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 28.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 25.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 29.
 
 ```reaction
 when RequestBoundary.request (path: "/auth/sign-out", requestId, session)
@@ -1204,8 +1211,8 @@ then
 ### Sessions.LeavingApplication.SignOut#2
 
 Authored path: `Sessions.LeavingApplication.SignOut`.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 24.
-- Covered by [Sessions](../design/compositions/Sessions.md), line 28.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 25.
+- Covered by [Sessions](../design/compositions/Sessions.md), line 29.
 
 ```reaction
 when Sessioning.end (session, ended), asked by Sessions.LeavingApplication.SignOut
@@ -1226,7 +1233,7 @@ not listed here have no explicit input contract.
 - `/account/profile` — requires `session`
 - `/account/update` — requires `session`, `name`, `about`
 - `/auth/current` — requires `session`
-- `/auth/register` — requires `username`, `password`
+- `/auth/register` — requires `username`, `email`, `password`
 - `/auth/sign-in` — requires `username`, `password`
 - `/auth/sign-out` — requires `session`
 - `/explorations/history` — requires `session`

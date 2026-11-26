@@ -19,7 +19,7 @@ import {
 } from "./api/client";
 
 type Screen = "auth" | "account-error" | "profile" | "activities" | "story";
-type AuthMode = "sign-in" | "register";
+type AuthMode = "sign-in" | "register" | "recover" | "reset";
 
 const screen = ref<Screen>("auth");
 
@@ -27,8 +27,10 @@ const account = ref<string | null>(null);
 const profile = ref<Profile | null>(null);
 
 const username = ref("");
+const email = ref("");
 const password = ref("");
 const confirmPassword = ref("");
+const resetToken = ref("");
 const authMode = ref<AuthMode>("sign-in");
 const showDeleteAccount = ref(false);
 const deletePassword = ref("");
@@ -224,6 +226,31 @@ async function saveProfile() {
   });
 }
 
+function emailProblem(value: string): string | null {
+  const address = value.trim();
+  if (!address) return "Enter an email address.";
+  if (address.length > 254 || !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(address)) {
+    return "Enter a valid email address.";
+  }
+  return null;
+}
+
+function passwordProblems(confirm: boolean): string[] {
+  const problems: string[] = [];
+  if (!password.value.length) {
+    problems.push("Enter a password.");
+  } else if (password.value.length < 8) {
+    problems.push("Your password is too short. Use at least 8 characters.");
+  } else if (password.value.length > 128) {
+    problems.push("Your password is too long. Use no more than 128 characters.");
+  } else if (confirm && !confirmPassword.value) {
+    problems.push("Confirm your password.");
+  } else if (confirm && password.value !== confirmPassword.value) {
+    problems.push("Your passwords don't match. Enter the same password in both fields.");
+  }
+  return problems;
+}
+
 function switchAuthMode(mode: AuthMode) {
   if (loading.value || authMode.value === mode) return;
   authMode.value = mode;
@@ -233,62 +260,80 @@ function switchAuthMode(mode: AuthMode) {
   message.value = "";
 }
 
-async function authenticate(mode: AuthMode) {
+function clearResetLink() {
+  resetToken.value = "";
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("reset")) return;
+  url.searchParams.delete("reset");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function leaveReset() {
+  clearResetLink();
+  switchAuthMode("sign-in");
+}
+
+async function enterAccount(nextAccount: string) {
+  account.value = nextAccount;
+  password.value = "";
+  confirmPassword.value = "";
+  authMode.value = "sign-in";
+  clearResetLink();
+  selectedStory.value = null;
+  startedStories.value = {};
+  interestProgress.value = {};
+  progressRevision++;
+  try {
+    await loadProfileAndNavigate();
+  } catch (err) {
+    screen.value = "account-error";
+    throw err;
+  }
+}
+
+function usernameProblems(): string[] {
+  const name = username.value.trim();
+  if (!name) return ["Enter a username."];
+  if (name.length < 3) return ["Your username is too short. Use at least 3 characters."];
+  if (name.length > 32) return ["Your username is too long. Use no more than 32 characters."];
+  if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+    return ["Your username contains unsupported characters. Use only letters, numbers, underscores, or hyphens."];
+  }
+  return [];
+}
+
+async function authenticate(mode: "sign-in" | "register") {
   await run(async () => {
+    const problems = [...usernameProblems()];
     if (mode === "register") {
-      const problems: string[] = [];
-      const name = username.value.trim();
-      if (!name) {
-        problems.push("Enter a username.");
-      } else if (name.length < 3) {
-        problems.push("Your username is too short. Use at least 3 characters.");
-      } else if (name.length > 32) {
-        problems.push("Your username is too long. Use no more than 32 characters.");
-      } else if (!/^[A-Za-z0-9_-]+$/.test(name)) {
-        problems.push("Your username contains unsupported characters. Use only letters, numbers, underscores, or hyphens.");
-      }
-      if (!password.value.length) {
-        problems.push("Enter a password.");
-      } else if (password.value.length < 8) {
-        problems.push("Your password is too short. Use at least 8 characters.");
-      } else if (password.value.length > 128) {
-        problems.push("Your password is too long. Use no more than 128 characters.");
-      } else if (!confirmPassword.value) {
-        problems.push("Confirm your password.");
-      } else if (password.value !== confirmPassword.value) {
-        problems.push("Your passwords don't match. Enter the same password in both fields.");
-      }
-      if (problems.length) {
-        throw new ApiError("INVALID_REQUEST", 400, problems.join(" "));
-      }
+      const address = emailProblem(email.value);
+      if (address) problems.push(address);
+      problems.push(...passwordProblems(true));
     }
+    if (problems.length) throw new ApiError("INVALID_REQUEST", 400, problems.join(" "));
 
-    const result =
-      mode === "register"
-        ? await api.register(
-            username.value.trim(),
-            password.value,
-          )
-        : await api.signIn(
-            username.value.trim(),
-            password.value,
-          );
+    const result = mode === "register"
+      ? await api.register(username.value.trim(), email.value.trim(), password.value)
+      : await api.signIn(username.value.trim(), password.value);
+    await enterAccount(result.account);
+  });
+}
 
-    account.value = result.account;
-    password.value = "";
-    confirmPassword.value = "";
+async function sendRecovery() {
+  await run(async () => {
+    const problem = emailProblem(email.value);
+    if (problem) throw new ApiError("INVALID_REQUEST", 400, problem);
+    await api.requestRecovery(email.value.trim());
+    message.value = "If an account uses that email, we sent a reset link. It expires in 5 minutes.";
+  });
+}
 
-    selectedStory.value = null;
-    startedStories.value = {};
-    interestProgress.value = {};
-    progressRevision++;
-
-    try {
-      await loadProfileAndNavigate();
-    } catch (err) {
-      screen.value = "account-error";
-      throw err;
-    }
+async function submitReset() {
+  await run(async () => {
+    const problems = passwordProblems(true);
+    if (problems.length) throw new ApiError("INVALID_REQUEST", 400, problems.join(" "));
+    const result = await api.resetPassword(resetToken.value, password.value);
+    await enterAccount(result.account);
   });
 }
 
@@ -305,8 +350,10 @@ function clearAccountState() {
     profile.value = null;
 
     username.value = "";
+    email.value = "";
     password.value = "";
     confirmPassword.value = "";
+    clearResetLink();
     authMode.value = "sign-in";
     profileName.value = "";
     profileAbout.value = "";
@@ -490,7 +537,17 @@ function returnToMainPage() {
   message.value = "";
 }
 
-onMounted(restoreAccount);
+onMounted(() => {
+  const reset = new URLSearchParams(window.location.search).get("reset");
+  if (reset) {
+    resetToken.value = reset;
+    authMode.value = "reset";
+    screen.value = "auth";
+    initializing.value = false;
+    return;
+  }
+  void restoreAccount();
+});
 </script>
 
 <template>
@@ -585,6 +642,7 @@ onMounted(restoreAccount);
 
         <div class="auth-card">
           <div
+            v-if="authMode === 'sign-in' || authMode === 'register'"
             class="auth-modes"
             :class="{ 'is-register': authMode === 'register' }"
             role="group"
@@ -616,36 +674,53 @@ onMounted(restoreAccount);
                 :key="authMode"
                 ref="authForm"
                 class="auth-form"
-                :aria-label="authMode === 'register' ? 'Create account' : 'Sign in'"
-                :novalidate="authMode === 'register'"
-                @submit.prevent="authenticate(authMode)"
+                :aria-label="authMode === 'register' ? 'Create account' : authMode === 'recover' ? 'Reset password' : authMode === 'reset' ? 'Choose a new password' : 'Sign in'"
+                :novalidate="authMode !== 'sign-in'"
+                @submit.prevent="authMode === 'recover' ? sendRecovery() : authMode === 'reset' ? submitReset() : authenticate(authMode)"
               >
                 <MotionReveal :show="Boolean(error)">
                   <div class="notification error" role="alert">{{ error }}</div>
                 </MotionReveal>
+                <MotionReveal :show="Boolean(message)">
+                  <div class="notification success" role="status">{{ message }}</div>
+                </MotionReveal>
 
-                <label for="username">Username</label>
+                <template v-if="authMode === 'sign-in' || authMode === 'register'">
+                  <label for="username">Username</label>
+                  <input
+                    id="username"
+                    v-model="username"
+                    autocomplete="username"
+                    placeholder="Your username"
+                    required
+                  />
+                </template>
 
-                <input
-                  id="username"
-                  v-model="username"
-                  autocomplete="username"
-                  placeholder="Your username"
-                  required
-                />
+                <template v-if="authMode === 'register' || authMode === 'recover'">
+                  <label for="email">Email</label>
+                  <input
+                    id="email"
+                    v-model="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </template>
 
-                <label for="password">Password</label>
+                <template v-if="authMode === 'sign-in' || authMode === 'register' || authMode === 'reset'">
+                  <label for="password">{{ authMode === 'reset' ? 'New password' : 'Password' }}</label>
+                  <input
+                    id="password"
+                    v-model="password"
+                    type="password"
+                    :autocomplete="authMode === 'sign-in' ? 'current-password' : 'new-password'"
+                    :placeholder="authMode === 'reset' ? 'Choose a new password' : 'Your password'"
+                    required
+                  />
+                </template>
 
-                <input
-                  id="password"
-                  v-model="password"
-                  type="password"
-                  :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'"
-                  placeholder="Your password"
-                  required
-                />
-
-                <template v-if="authMode === 'register'">
+                <template v-if="authMode === 'register' || authMode === 'reset'">
                   <label for="confirm-password">Confirm password</label>
                   <input
                     id="confirm-password"
@@ -658,12 +733,27 @@ onMounted(restoreAccount);
                 </template>
 
                 <button
+                  v-if="authMode === 'sign-in'"
+                  class="auth-link"
+                  type="button"
+                  :disabled="loading"
+                  @click="switchAuthMode('recover')"
+                >Forgot password?</button>
+
+                <button
                   class="button button-primary"
                   type="submit"
                   :disabled="loading"
                 >
-                  {{ loading ? "Please wait..." : authMode === "register" ? "Create account" : "Sign in" }}
+                  {{ loading ? "Please wait..." : authMode === "register" ? "Create account" : authMode === "recover" ? "Send reset link" : authMode === "reset" ? "Save new password" : "Sign in" }}
                 </button>
+                <button
+                  v-if="authMode === 'recover' || authMode === 'reset'"
+                  class="auth-link"
+                  type="button"
+                  :disabled="loading"
+                  @click="authMode === 'reset' ? leaveReset() : switchAuthMode('sign-in')"
+                >Back to sign in</button>
               </form>
             </Transition>
           </div>

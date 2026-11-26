@@ -135,6 +135,7 @@ function requireString(
 async function registerUser(username: string) {
   const result = await post("/auth/register", {
     username,
+    email: `${username}@example.com`,
     password: PASSWORD,
   });
 

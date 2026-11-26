@@ -56,7 +56,7 @@ async function post(path: string, body = {}, cookie?: string, origin = ORIGIN) {
 }
 
 test("local HTTP registration retains its session through profile creation, sign-out, and sign-in", async () => {
-  const credentials = { username: "local-proxy-test", password: "LocalTest123!" };
+  const credentials = { username: "local-proxy-test", email: "local-proxy-test@example.com", password: "LocalTest123!" };
   const registered = await post("/auth/register", credentials);
   expect(registered.status).toBe(200);
   expect(await registered.json()).toEqual({ account: credentials.username });
@@ -89,7 +89,7 @@ test("local HTTP registration retains its session through profile creation, sign
   expect(signedOut.headers.get("set-cookie")).toContain("Max-Age=0");
   expect((await post("/auth/current", {}, cookie)).status).toBe(401);
 
-  const signedIn = await post("/auth/sign-in", credentials);
+  const signedIn = await post("/auth/sign-in", { username: credentials.username, password: credentials.password });
   expect(signedIn.status).toBe(200);
   const newCookie = signedIn.headers.get("set-cookie")!.split(";")[0]!;
   expect(newCookie).not.toBe(cookie);

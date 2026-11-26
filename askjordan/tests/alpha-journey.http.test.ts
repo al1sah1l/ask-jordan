@@ -102,6 +102,7 @@ test("Alpha journey: registration through exploration", async () => {
   // 1. Register
   const registered = await post("/auth/register", {
     username: "george",
+    email: "george@example.com",
     password: "secure-password-123",
   });
 

@@ -8,6 +8,7 @@ import { policy } from "./http.ts";
 import { ApplicationPersistence } from "./persistence.ts";
 import { createProgressiveHttpHandler } from "./learning/progressiveHttp.ts";
 import { createAccountDeletionHandler } from "./accountDeletionHttp.ts";
+import { createRecoveryHandler } from "./recoveryHttp.ts";
 import { ApplicationRequestGate } from "./applicationRequestGate.ts";
 
 const application = assembleApplication();
@@ -31,6 +32,7 @@ const httpApi = createHttpHandler({
 
 const progressiveHttp = createProgressiveHttpHandler(application, db, persistence);
 const deleteAccount = createAccountDeletionHandler(application, db, persistence);
+const recovery = createRecoveryHandler(db);
 const requests = new ApplicationRequestGate();
 
 const persistentPaths = new Set([
@@ -50,8 +52,13 @@ const progressivePaths = new Set([
 ]);
 
 async function api(request: Request): Promise<Response> {
-  const isDeletion = new URL(request.url).pathname === "/api/account/delete";
-  return requests.run(() => isDeletion ? deleteAccount(request) : existingApi(request), isDeletion);
+  const path = new URL(request.url).pathname;
+  const isDeletion = path === "/api/account/delete";
+  const isRecovery = path === "/api/auth/recover" || path === "/api/auth/reset";
+  return requests.run(
+    () => isDeletion ? deleteAccount(request) : isRecovery ? recovery(request) : existingApi(request),
+    isDeletion,
+  );
 }
 
 async function existingApi(request: Request): Promise<Response> {

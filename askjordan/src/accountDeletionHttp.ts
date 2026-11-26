@@ -85,6 +85,7 @@ export function createAccountDeletionHandler(
       }
       await database.collection<{ _id: string }>("account.profiles").deleteOne({ _id: user });
       await database.collection("sessioning.sessions").deleteMany({ user });
+      await database.collection("authenticating.recoveries").deleteMany({ account: user });
       await database.collection<{ _id: string }>("authenticating.accounts").deleteOne({ _id: user });
       return json({ deleted: true }, 200, true);
     } catch (error) {

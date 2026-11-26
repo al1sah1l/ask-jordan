@@ -36,7 +36,7 @@ beforeEach(async () => {
   const secondActivity = catalog.activities[1]!.activity;
   sessions = {};
   for (const user of users) {
-    await new AuthenticatingConcept(database.db).register({ username: user, password: PASSWORD });
+    await new AuthenticatingConcept(database.db).register({ username: user, email: `${user}@example.com`, password: PASSWORD });
     await new AccountConcept(database.db).createAccount({ user, name: user, about: `${user}'s private profile` });
     sessions[user] = [
       (await new SessioningConcept(database.db).start({ user })).session,
@@ -65,6 +65,10 @@ beforeEach(async () => {
     })) },
   });
   await persistence.save(application);
+  await database.db.collection<{ _id: string; account: string; createdAt: Date; expiresAt: Date }>("authenticating.recoveries").insertMany([
+    { _id: "alpha-reset", account: "alpha", createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) },
+    { _id: "beta-reset", account: "beta", createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) },
+  ]);
   handle = createAccountDeletionHandler(application, database.db, persistence);
 });
 
@@ -87,6 +91,8 @@ test("deletion removes all owned data, survives restart, and leaves another acco
     expect(await database.db.collection(collection).countDocuments({ user: "alpha" })).toBe(0);
     expect(await database.db.collection(collection).countDocuments({ user: "beta" })).toBeGreaterThan(0);
   }
+  expect(await database.db.collection("authenticating.recoveries").countDocuments({ account: "alpha" })).toBe(0);
+  expect(await database.db.collection("authenticating.recoveries").countDocuments({ account: "beta" })).toBe(1);
   for (const collection of ["authenticating.accounts", "account.profiles"]) {
     expect(await database.db.collection<{ _id: string }>(collection).countDocuments({ _id: "alpha" })).toBe(0);
     expect(await database.db.collection<{ _id: string }>(collection).countDocuments({ _id: "beta" })).toBe(1);
@@ -109,7 +115,7 @@ test("deletion removes all owned data, survives restart, and leaves another acco
   expect(restored.interests[EXPORT_STATE]().preferences.map(row => row.user)).toEqual(["beta"]);
   expect(restored.explorations[EXPORT_STATE]().explorations.map(row => row.user)).toEqual(["beta"]);
   expect(restored.interests._activities({}).length).toBe(8);
-  await new AuthenticatingConcept(database.db).register({ username: "alpha", password: PASSWORD });
+  await new AuthenticatingConcept(database.db).register({ username: "alpha", email: "alpha@example.com", password: PASSWORD });
   expect((await handle(request())).status).toBe(401);
 });
 

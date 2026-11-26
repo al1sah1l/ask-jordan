@@ -1,13 +1,14 @@
 # Sessions
 
-Sessions connect an accepted username and password to an opaque session. Later
-requests carry that session, and `current` turns it back into the account
-Authenticating returned, so a caller cannot choose which user they are.
+Sessions connect an accepted account to an opaque session. Later requests carry
+that session, and `current` turns it back into the account Authenticating
+returned, so a caller cannot choose which user they are.
 
-[Registering creates an account and starts a session](reaction:Sessions.EnteringApplication.Register)
-for it, and [signing in checks the password and starts a new session](reaction:Sessions.EnteringApplication.SignIn).
+[Registering creates an account from a username, email, and password and starts a session](reaction:Sessions.EnteringApplication.Register)
+for it, and [signing in checks the username and password and starts a new session](reaction:Sessions.EnteringApplication.SignIn).
 In both cases the session's user is the account that came back from
-Authenticating.
+Authenticating. A forgotten password is replaced through a recovery link, which
+is not one of these session routes.
 
 ```endpoints
 Sessions.EnteringApplication.Register at /auth/register

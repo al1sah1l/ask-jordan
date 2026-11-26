@@ -56,6 +56,7 @@ export type AskJordanWire = {
   };
   "/auth/register": {
     input: {
+      "email": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Authenticating"]["register"]>[0], ["email"]>>;
       "password": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Authenticating"]["register"]>[0], ["password"]>>;
       "username": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Authenticating"]["register"]>[0], ["username"]>>;
     };
@@ -64,7 +65,7 @@ export type AskJordanWire = {
       "expiresAt": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Sessioning"]["start"]>>, ["expiresAt"]>>;
       "session": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Sessioning"]["start"]>>, ["session"]>>;
     };
-    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_USERNAME" | "USERNAME_TAKEN" | "WEAK_PASSWORD" };
+    error: { error: AppWideError | "EMAIL_TAKEN" | "INVALID_EMAIL" | "INVALID_INPUT" | "INVALID_USERNAME" | "USERNAME_TAKEN" | "WEAK_PASSWORD" };
   };
   "/auth/sign-in": {
     input: {

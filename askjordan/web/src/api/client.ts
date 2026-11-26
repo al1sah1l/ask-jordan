@@ -153,6 +153,10 @@ function messageFor(code: string, status: number): string {
     DELETE_CONFIRMATION_REQUIRED: "Type your username exactly to confirm account deletion.",
     DELETE_PASSWORD_REQUIRED: "Enter your password to delete your account.",
     DELETE_PASSWORD_INCORRECT: "That password isn't correct. Your account hasn't been deleted.",
+    INVALID_EMAIL: "Enter a valid email address.",
+    INVALID_RECOVERY: "That reset link is invalid or has expired. Request a new one.",
+    WEAK_PASSWORD: "Your password must contain 8 to 128 characters.",
+    RECOVERY_UNAVAILABLE: "We couldn't send the reset link. Please try again.",
     ACCOUNT_DELETION_UNAVAILABLE: "We couldn't finish deleting your account. Please try again. If your session has ended, sign in again to retry.",
   };
 
@@ -222,12 +226,20 @@ export const api = {
   deleteAccount(password: string, confirmation: string) {
     return post<{ deleted: boolean }>("/account/delete", { password, confirmation });
   },
-  register(username: string, password: string) {
-    return post<{ account: string }>("/auth/register", { username, password });
+  register(username: string, email: string, password: string) {
+    return post<{ account: string }>("/auth/register", { username, email, password });
   },
 
   signIn(username: string, password: string) {
     return post<{ account: string }>("/auth/sign-in", { username, password });
+  },
+
+  requestRecovery(email: string) {
+    return post<{ accepted: boolean }>("/auth/recover", { email });
+  },
+
+  resetPassword(token: string, password: string) {
+    return post<{ account: string }>("/auth/reset", { token, password });
   },
 
   currentUser() {
